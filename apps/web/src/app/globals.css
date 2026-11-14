@@ -1,0 +1,445 @@
+@import "tailwindcss";
+
+/*
+ * DREAM AI design system.
+ * Brand colours live here as tokens — swap them to rebrand the whole app.
+ * Palette: very dark blue-black night, restrained lavender light, a cold
+ * mist-teal counter-accent (keeps the UI from turning purple), warm gold for Stars.
+ */
+
+@theme inline {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, "Times New Roman", serif;
+}
+
+@theme {
+  --color-night-950: #05060c;
+  --color-night-900: #090b15;
+  --color-night-850: #0d0f1c;
+  --color-night-800: #121426;
+  --color-night-700: #1a1d33;
+  --color-night-600: #252942;
+
+  --color-fg: #eeebf8;
+  --color-fg-muted: #a8a5be;
+  --color-fg-dim: #706e88;
+
+  --color-lilac-100: #f1edff;
+  --color-lilac-200: #ded5ff;
+  --color-lilac-300: #c7b9ff;
+  --color-lilac-400: #ae9cfb;
+  --color-lilac-500: #9481f0;
+  --color-lilac-600: #7a66df;
+  --color-violet-800: #3b2b8f;
+  --color-violet-900: #221a57;
+
+  --color-mist-300: #a7dce6;
+  --color-mist-400: #72c1d1;
+  --color-mist-500: #4a9db0;
+
+  --color-gold-200: #ffe9b3;
+  --color-gold-300: #f7d690;
+  --color-gold-400: #f0c35f;
+
+  --color-rose-300: #ffa3b0;
+  --color-rose-400: #ff7d8f;
+  --color-mint-300: #a6ead0;
+  --color-mint-400: #78d8b0;
+  --color-amber-300: #f6d58f;
+
+  --ease-dream: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-breathe: breathe 5.5s ease-in-out infinite;
+  --animate-halo: halo 5.5s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-drift-a: drift-a 34s ease-in-out infinite alternate;
+  --animate-drift-b: drift-b 42s ease-in-out infinite alternate;
+  --animate-drift-c: drift-c 38s ease-in-out infinite alternate;
+  --animate-twinkle: twinkle 6s ease-in-out infinite;
+  --animate-orbit: orbit 18s linear infinite;
+  --animate-fade-in: fade-in 0.35s var(--ease-dream) both;
+  --animate-sheet-in: sheet-in 0.42s var(--ease-dream) both;
+  --animate-sheet-out: sheet-out 0.24s ease-in both;
+  --animate-overlay-in: overlay-in 0.3s ease-out both;
+  --animate-overlay-out: overlay-out 0.22s ease-in both;
+  --animate-pop-in: pop-in 0.32s var(--ease-dream) both;
+  --animate-pop-out: pop-out 0.18s ease-in both;
+  --animate-listen: listen 2.8s ease-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+  }
+  @keyframes halo {
+    0%, 100% { transform: scale(1); opacity: 0.55; }
+    50% { transform: scale(1.09); opacity: 0.9; }
+  }
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  @keyframes drift-a {
+    0% { transform: translate3d(-6%, -4%, 0) scale(1); }
+    100% { transform: translate3d(8%, 6%, 0) scale(1.12); }
+  }
+  @keyframes drift-b {
+    0% { transform: translate3d(6%, 2%, 0) scale(1.05); }
+    100% { transform: translate3d(-8%, -6%, 0) scale(0.95); }
+  }
+  @keyframes drift-c {
+    0% { transform: translate3d(0, 6%, 0) scale(1); }
+    100% { transform: translate3d(-6%, -4%, 0) scale(1.1); }
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.8; }
+  }
+  @keyframes orbit {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes sheet-in {
+    from { transform: translate3d(0, 100%, 0); }
+    to { transform: translate3d(0, 0, 0); }
+  }
+  @keyframes sheet-out {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(0, 100%, 0); }
+  }
+  @keyframes overlay-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes overlay-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes pop-out {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    to { opacity: 0; transform: translate(-50%, -49%) scale(0.97); }
+  }
+  @keyframes listen {
+    0% { transform: scale(0.6); opacity: 0.7; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+}
+
+/* ─── Layout variables: Telegram viewport & safe areas ───────────────────── */
+
+:root {
+  color-scheme: dark;
+  --sat: max(env(safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px));
+  --sab: max(env(safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px));
+  --sal: max(env(safe-area-inset-left, 0px), var(--tg-safe-area-inset-left, 0px));
+  --sar: max(env(safe-area-inset-right, 0px), var(--tg-safe-area-inset-right, 0px));
+  --app-top: calc(var(--sat) + var(--tg-content-safe-area-inset-top, 0px));
+  --app-bottom: calc(var(--sab) + var(--tg-content-safe-area-inset-bottom, 0px));
+  --app-height: var(--tg-viewport-stable-height, 100dvh);
+  --nav-height: 64px;
+  --nav-space: calc(var(--app-bottom) + var(--nav-height) + 28px);
+}
+
+html,
+body {
+  background-color: var(--color-night-950);
+  color: var(--color-fg);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: var(--app-height);
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: rgb(174 156 251 / 0.35);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-lilac-300);
+  outline-offset: 3px;
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+img,
+video {
+  -webkit-user-drag: none;
+}
+
+input,
+textarea {
+  font-size: 16px; /* prevents iOS zoom on focus */
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+
+@utility glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.022));
+  border: 1px solid rgb(255 255 255 / 0.075);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045), 0 18px 40px -22px rgb(0 0 0 / 0.75);
+}
+
+@utility glass-strong {
+  background: rgb(14 16 30 / 0.74);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 50px -20px rgb(0 0 0 / 0.8);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+@utility surface {
+  background: rgb(255 255 255 / 0.035);
+  border: 1px solid rgb(255 255 255 / 0.065);
+}
+
+@utility text-moon {
+  background: linear-gradient(120deg, #f6f3ff 0%, #d9cfff 45%, #a9c9e0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility text-lilac-glow {
+  background: linear-gradient(120deg, #e3dbff 0%, #b5a5fc 60%, #93c6d6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility btn-moonlight {
+  color: var(--color-night-950);
+  background: linear-gradient(135deg, #e6dfff 0%, #bcaefc 46%, #9583ee 100%);
+  box-shadow: 0 12px 34px -12px rgb(150 128 255 / 0.65), inset 0 1px 0 rgb(255 255 255 / 0.65), inset 0 -1px 0 rgb(60 40 150 / 0.25);
+}
+
+@utility btn-gold {
+  color: #1b1405;
+  background: linear-gradient(135deg, #fff0c4 0%, #f7d690 45%, #e9b54e 100%);
+  box-shadow: 0 12px 30px -12px rgb(240 195 95 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility safe-top {
+  padding-top: calc(var(--app-top) + 14px);
+}
+
+@utility safe-bottom {
+  padding-bottom: calc(var(--app-bottom) + 16px);
+}
+
+@utility pb-nav {
+  padding-bottom: var(--nav-space);
+}
+
+@utility min-h-app {
+  min-height: var(--app-height);
+}
+
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.045);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+    animation: var(--animate-shimmer);
+  }
+}
+
+@utility hairline-top {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(199 185 255 / 0.55), transparent);
+  }
+}
+
+/* Mask for horizontal scrollers so content fades at the edges. */
+@utility fade-x {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+}
+
+/* ─── Night sky background (cheap: gradients + transforms only) ─────────── */
+
+.night-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 50% -10%, #10132a 0%, transparent 60%),
+    radial-gradient(90% 60% at 50% 110%, #0b0c1d 0%, transparent 70%),
+    var(--color-night-950);
+}
+
+.night-sky__blob {
+  position: absolute;
+  width: 90vmax;
+  height: 90vmax;
+  border-radius: 9999px;
+  will-change: transform;
+}
+
+.night-sky__blob--a {
+  left: -35vmax;
+  top: -40vmax;
+  background: radial-gradient(closest-side, rgb(92 74 196 / 0.30), rgb(92 74 196 / 0.10) 45%, transparent 72%);
+  animation: var(--animate-drift-a);
+}
+
+.night-sky__blob--b {
+  right: -45vmax;
+  top: 10vmax;
+  background: radial-gradient(closest-side, rgb(46 118 150 / 0.20), rgb(46 118 150 / 0.06) 50%, transparent 72%);
+  animation: var(--animate-drift-b);
+}
+
+.night-sky__blob--c {
+  left: -20vmax;
+  bottom: -55vmax;
+  background: radial-gradient(closest-side, rgb(120 64 146 / 0.17), rgb(120 64 146 / 0.05) 50%, transparent 72%);
+  animation: var(--animate-drift-c);
+}
+
+.night-sky__stars {
+  position: absolute;
+  inset: -10%;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgb(255 255 255 / 0.75), transparent 60%),
+    radial-gradient(1px 1px at 27% 72%, rgb(255 255 255 / 0.5), transparent 60%),
+    radial-gradient(1.5px 1.5px at 44% 32%, rgb(220 210 255 / 0.7), transparent 60%),
+    radial-gradient(1px 1px at 63% 12%, rgb(255 255 255 / 0.55), transparent 60%),
+    radial-gradient(1px 1px at 78% 58%, rgb(255 255 255 / 0.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 88% 26%, rgb(200 230 240 / 0.6), transparent 60%),
+    radial-gradient(1px 1px at 8% 88%, rgb(255 255 255 / 0.4), transparent 60%),
+    radial-gradient(1px 1px at 52% 92%, rgb(255 255 255 / 0.35), transparent 60%),
+    radial-gradient(1px 1px at 35% 48%, rgb(255 255 255 / 0.3), transparent 60%),
+    radial-gradient(1px 1px at 70% 80%, rgb(255 255 255 / 0.4), transparent 60%);
+  background-size: 420px 520px;
+  opacity: 0.55;
+}
+
+.night-sky__stars--twinkle {
+  background-size: 640px 760px;
+  background-position: 120px 80px;
+  animation: var(--animate-twinkle);
+}
+
+.night-sky__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.night-sky__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(130% 90% at 50% 40%, transparent 55%, rgb(2 2 6 / 0.55) 100%);
+}
+
+/* Decorative motion is disabled for users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .night-sky__blob,
+  .night-sky__stars--twinkle,
+  .decor-anim,
+  .decor-anim::before,
+  .decor-anim::after {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  /* Everything else (sheets, dialogs, skeleton shimmer, splash) settles instantly. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Range input used by the audio preview player. */
+.range-dream {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  background: transparent;
+}
+.range-dream::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--color-lilac-300) var(--progress, 0%), rgb(255 255 255 / 0.12) var(--progress, 0%));
+}
+.range-dream::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.12);
+}
+.range-dream::-moz-range-progress {
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--color-lilac-300);
+}
+.range-dream::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgb(174 156 251 / 0.25);
+}
+.range-dream::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 9999px;
+  background: #fff;
+}

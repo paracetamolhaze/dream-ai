@@ -1,0 +1,30 @@
+{
+  "name": "dream-ai",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev:web": "npm run dev -w @dream/web",
+    "dev:bot": "npm run dev -w @dream/bot",
+    "dev:worker": "npm run dev -w @dream/worker",
+    "build": "npm run build -w @dream/web && npm run build -w @dream/bot && npm run build -w @dream/worker",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "vitest run",
+    "db:generate": "npm run db:generate -w @dream/core",
+    "db:migrate": "npm run db:migrate -w @dream/core",
+    "db:seed": "npm run db:seed -w @dream/core"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

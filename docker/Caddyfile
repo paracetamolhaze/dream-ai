@@ -1,0 +1,37 @@
+# Reverse proxy with automatic HTTPS (Let's Encrypt) for APP_DOMAIN.
+# For APP_DOMAIN=localhost Caddy issues a locally trusted certificate.
+# Optional: add `email you@example.com` in a global options block for ACME notices.
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# Telegram webhook → bot service (secret token is verified by the bot).
+	handle /telegram/* {
+		reverse_proxy bot:8081
+	}
+
+	# Everything else → Next.js (Mini App, API, admin, public share pages).
+	handle {
+		reverse_proxy web:3000 {
+			# Large voice uploads and long video streams.
+			transport http {
+				read_timeout 5m
+				write_timeout 10m
+			}
+		}
+	}
+
+	request_body {
+		max_size 30MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

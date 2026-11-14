@@ -1,0 +1,19 @@
+{
+  "name": "@dream/bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dream/core": "0.1.0",
+    "grammy": "1.46.0"
+  },
+  "devDependencies": {
+    "tsup": "9.0.0"
+  }
+}

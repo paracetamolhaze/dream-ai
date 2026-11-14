@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "apps/web", "--port", "3300"],
+      "port": 3300
+    },
+    {
+      "name": "worker",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env", "apps/worker/dist/index.js"],
+      "port": 8082
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+dist/
+# copied from packages/core/drizzle at build time
+drizzle/
