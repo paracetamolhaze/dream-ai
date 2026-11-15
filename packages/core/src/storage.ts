@@ -15,7 +15,7 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import type { Readable } from "node:stream";
-import { env, mediaSigningSecret, publicAppUrl } from "./env";
+import { apiIsSeparate, env, mediaSigningSecret, publicApiUrl } from "./env";
 import { hmacSha256, safeEqual } from "./utils";
 
 declare global {
@@ -184,7 +184,8 @@ export function signMediaUrl(mediaId: string, opts: { variant?: MediaVariant; tt
   const qs = new URLSearchParams({ v: variant, exp: String(exp), sig });
   if (download) qs.set("dl", "1");
   const path = `/api/media/${mediaId}?${qs.toString()}`;
-  return opts.absolute ? `${publicAppUrl()}${path}` : path;
+  // Absolute when the UI is hosted on another origin (static Mini App on a CDN) or when asked.
+  return (opts.absolute ?? apiIsSeparate()) ? `${publicApiUrl()}${path}` : path;
 }
 
 export function verifyMediaSignature(mediaId: string, params: URLSearchParams): { ok: boolean; variant: MediaVariant; download: boolean } {
@@ -199,7 +200,7 @@ export function verifyMediaSignature(mediaId: string, params: URLSearchParams): 
 
 /** URL that external AI providers can fetch (needs a public HTTPS origin). */
 export function providerAccessibleUrl(mediaId: string): string | null {
-  const base = publicAppUrl();
+  const base = publicApiUrl();
   if (!base.startsWith("https://") || /localhost|127\.0\.0\.1/.test(base)) return null;
   return signMediaUrl(mediaId, { ttlSec: 3 * 3600, absolute: true });
 }

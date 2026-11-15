@@ -20,6 +20,7 @@ import { deleteObjects, downloadToFile } from "../storage";
 import { InlineKeyboard, webAppUrl } from "../telegram/bot-api";
 import { sanitizeUserText, truncate } from "../utils";
 import { classifyError, createJobDir, isFinalAttempt, releaseLock, removeDir, tryLock, type AttemptInfo } from "./common";
+import { routes } from "../routes";
 
 const log = logger.child({ step: "transcription" });
 
@@ -134,7 +135,7 @@ export async function processTranscription(payload: TranscriptionPayload, attemp
     }
 
     if (payload.replyChatId) {
-      await sendToChat(payload.replyChatId, m.transcriptReady(truncate(text, 700)), new InlineKeyboard().webApp(m.btnReview, webAppUrl(`/dreams/${dream.id}/review`)));
+      await sendToChat(payload.replyChatId, m.transcriptReady(truncate(text, 700)), new InlineKeyboard().webApp(m.btnReview, webAppUrl(routes.review(dream.id))));
     }
     return { status: "review" };
   } catch (err) {

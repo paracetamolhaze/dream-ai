@@ -6,9 +6,15 @@ import { llmPricing } from "../models";
 import type { AiCallContext, LlmProvider, StructuredRequest, StructuredResult } from "../types";
 
 /**
+ * Models that accept the server-side refusal fallback. Claude Haiku 5.5 has
+ * none (a declined request simply stays declined), so it is sent without one.
+ */
+const SERVER_FALLBACK_MODELS = new Set(["claude-fable-5-2", "claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"]);
+
+/**
  * Claude adapter (official Anthropic SDK). Structured output uses
- * `output_config.format` with a zod schema; server-side refusal fallbacks are
- * enabled so a policy decline is retried on the fallback model automatically.
+ * `output_config.format` with a zod schema; where the model supports it,
+ * server-side refusal fallbacks retry a policy decline on the fallback model.
  */
 export class AnthropicLlmProvider implements LlmProvider {
   readonly isDemo = false;
@@ -30,8 +36,7 @@ export class AnthropicLlmProvider implements LlmProvider {
           max_tokens: req.maxTokens ?? 16000,
           system: req.system,
           messages: [{ role: "user", content: req.user }],
-          betas: ["server-side-fallback-2026-07-01"],
-          fallbacks: "default",
+          ...(SERVER_FALLBACK_MODELS.has(this.model) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
           output_config: { format: betaZodOutputFormat(req.schema as ZodType), effort: "medium" },
         },
         { signal: ctx.signal },

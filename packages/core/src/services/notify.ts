@@ -7,6 +7,7 @@ import { logger } from "../logger";
 import { getObjectBuffer } from "../storage";
 import { botApi, hasBotToken, InlineKeyboard, InputFile, webAppUrl } from "../telegram/bot-api";
 import { getUserSettings, userLocale } from "./users";
+import { routes } from "../routes";
 
 const MAX_TELEGRAM_UPLOAD = 49 * 1024 * 1024;
 
@@ -37,7 +38,7 @@ export async function notifyGenerationCompleted(jobId: string): Promise<void> {
   const locale = userLocale(row.user);
   const m = msg(locale);
   const title = row.title ?? m.untitled;
-  const kb = new InlineKeyboard().webApp(m.btnWatch, webAppUrl(`/dreams/${row.job.dreamId}?view=${row.job.mediaType}`));
+  const kb = new InlineKeyboard().webApp(m.btnWatch, webAppUrl(routes.dream(row.job.dreamId, row.job.mediaType)));
   const caption = m.generationReady(title, row.job.mediaType === "video");
   try {
     const [media] = row.job.resultMediaId ? await db.select().from(dreamMedia).where(eq(dreamMedia.id, row.job.resultMediaId)) : [];
@@ -85,7 +86,7 @@ export async function notifyGenerationFailed(jobId: string, refunded: boolean): 
   try {
     await botApi().sendMessage(row.user.telegramId, m.generationFailed(row.title ?? m.untitled, errorText(row.job.errorCode, locale), refunded), {
       parse_mode: "HTML",
-      reply_markup: new InlineKeyboard().webApp(m.btnOpenApp, webAppUrl(`/dreams/${row.job.dreamId}`)),
+      reply_markup: new InlineKeyboard().webApp(m.btnOpenApp, webAppUrl(routes.dream(row.job.dreamId))),
     });
     await db.update(generationJobs).set({ notifiedAt: new Date() }).where(eq(generationJobs.id, jobId));
   } catch (err) {

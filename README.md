@@ -67,6 +67,27 @@ node scripts/e2e-smoke.mjs http://localhost:8088
 промокод → AI-видео → вкладка «Видео» → у одного сна два результата. Работает только там, где
 включён `ALLOW_DEV_AUTH` (никогда не в production).
 
+### Mini App на Vercel (статический хостинг, без вычислений на Vercel)
+
+Интерфейс Mini App можно отдавать с Vercel как обычные статические файлы, а всё остальное
+(API, медиа, админка, публичные страницы `/s/…`, бот, воркер, БД) оставить на backend.
+
+* На Vercel нет серверных функций, SSR и оптимизации изображений. Сборка выполняется локально, Vercel
+  только раздаёт ~2,5 МБ статики с CDN (кэш `_next/static` — год, immutable).
+* Браузер обращается к API **напрямую** (CORS разрешён только для `PUBLIC_APP_URL` и `CORS_ORIGINS`).
+  Видео и изображения тоже грузятся с backend — ни запросы к API, ни медиа-трафик через Vercel не идут.
+* Маршруты Mini App статические: id сна передаётся в query (`/dream?id=…`), поэтому каждая страница —
+  один HTML-файл.
+
+```bash
+# backend (.env): PUBLIC_APP_URL=https://<проект>.vercel.app  PUBLIC_API_URL=https://<backend>
+VERCEL_TOKEN=… node scripts/deploy-miniapp-vercel.mjs --api https://<backend> --bot <bot_username> --project sonnik-miniapp
+```
+
+Скрипт копирует интерфейс в `.miniapp-build/` (без API, админки и серверного кода), собирает
+`STATIC_EXPORT=1 next build` и загружает результат в проект Vercel. При смене адреса backend просто
+запустите его снова — деплой статики занимает секунды.
+
 ## Production: одна команда
 
 ```bash
@@ -82,6 +103,13 @@ docker compose --profile app up -d --build
 > Образ `minio/minio` больше не публикуется в Docker Hub, поэтому по умолчанию используется сборка
 > MinIO от Bitnami (`bitnamilegacy/minio`). Любой S3-совместимый сервер подходит: `MINIO_IMAGE=…`
 > или внешний S3 через `S3_ENDPOINT`.
+
+**Сервер дома (DuckDNS и т. п.).** Сервис DuckDNS в compose (`--profile duckdns`, `DUCKDNS_DOMAINS`,
+`DUCKDNS_TOKEN`) раз в 5 минут обновляет IP домена. Многие домашние роутеры не поддерживают NAT
+loopback: из той же сети домен не открывается, хотя из интернета всё работает. При этом Mini App
+показывает «Нет связи с сервером». На компьютере с сервером добавьте в `hosts`
+(`C:\Windows\System32\drivers\etc\hosts` или `/etc/hosts`) строку `127.0.0.1 <ваш-домен>`.
+Телефон в домашнем Wi-Fi проверяйте через мобильный интернет либо включите NAT loopback в роутере.
 
 ### Обязательные переменные production
 

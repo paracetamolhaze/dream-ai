@@ -15,6 +15,7 @@ import { MAX_DREAM_TEXT as MAX_TEXT, MIN_DREAM_TEXT as MIN_TEXT } from "@/lib/co
 import { useSessionState } from "@/lib/hooks";
 import { qk } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { routes } from "@dream/core/routes";
 
 export default function WritePage() {
   const t = useT();
@@ -33,7 +34,7 @@ export default function WritePage() {
       qc.setQueryData(qk.dream(res.dream.id), res.dream);
       void qc.invalidateQueries({ queryKey: qk.libraryAll });
       setText("");
-      router.replace(`/dreams/${res.dream.id}/prepare`);
+      router.replace(routes.prepare(res.dream.id));
     } catch (err) {
       toast.error(errorMessage(err));
       setBusy(false);

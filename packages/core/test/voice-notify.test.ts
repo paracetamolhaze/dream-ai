@@ -100,7 +100,7 @@ describe.skipIf(!integration || process.env.S3_AVAILABLE !== "1")("bot notificat
     expect(sent[0]!.method).toBe("sendVideo");
     expect(sent[0]!.chatId).toBe(u.telegramId);
     expect(sent[0]!.text).toContain("Красное небо");
-    expect(JSON.stringify(sent[0]!.markup)).toContain(`/dreams/${d.id}`);
+    expect(JSON.stringify(sent[0]!.markup)).toContain(`/dream?id=${d.id}`);
     const [m] = await getDb().select().from(dreamMedia).where(eq(dreamMedia.id, media!.id));
     expect(m!.telegramFileId).toBe("tg-file-id-1");
   });

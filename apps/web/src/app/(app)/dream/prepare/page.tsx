@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Check, PenLine, Sparkles } from "lucide-react";
@@ -23,6 +23,7 @@ import { api, isApiError, upload } from "@/lib/api";
 import { rememberJobOptions, useIdempotencyKey } from "@/lib/generation";
 import { qk, useDream, useQuote } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { routes } from "@dream/core/routes";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 type Format = "slideshow" | "video";
@@ -36,7 +37,7 @@ export default function PreparePage() {
 }
 
 function Prepare() {
-  const { id } = useParams<{ id: string }>();
+  const id = useSearchParams().get("id") ?? "";
   const search = useSearchParams();
   const requested = search.get("format");
   const regen = search.get("regen") === "1";
@@ -65,7 +66,7 @@ function Prepare() {
   // Not confirmed yet → back to the transcript review.
   useEffect(() => {
     if (!d) return;
-    if (d.status === "review" || d.status === "draft" || d.status === "transcribing" || d.status === "transcription_failed") router.replace(`/dreams/${id}/review`);
+    if (d.status === "review" || d.status === "draft" || d.status === "transcribing" || d.status === "transcription_failed") router.replace(routes.review(id));
   }, [d, id, router]);
 
   useEffect(() => {
@@ -130,7 +131,7 @@ function Prepare() {
       void qc.invalidateQueries({ queryKey: qk.profile });
       void qc.invalidateQueries({ queryKey: qk.libraryAll });
       void qc.invalidateQueries({ queryKey: qk.dream(id) });
-      router.push(`/dreams/${id}/jobs/${res.job.id}`);
+      router.push(routes.job(id, res.job.id));
     } catch (err) {
       setBusy(false);
       if (isApiError(err, "insufficient_credits")) {
@@ -141,7 +142,7 @@ function Prepare() {
         const fresh = await dreamQ.refetch();
         const active = fresh.data?.activeJobs.find((j) => j.mediaType === format);
         if (active) {
-          router.push(`/dreams/${id}/jobs/${active.id}`);
+          router.push(routes.job(id, active.id));
           return;
         }
       }
@@ -182,7 +183,7 @@ function Prepare() {
               }}
               retryLabel={t.common.tryAgain}
             />
-            <Button variant="ghost" onClick={() => router.push(`/dreams/${id}/review?edit=1`)}>
+            <Button variant="ghost" onClick={() => router.push(routes.review(id, { edit: true }))}>
               <PenLine />
               {t.prepare.editText}
             </Button>
@@ -308,7 +309,7 @@ function Prepare() {
         intent={purchase?.intent}
         onDone={({ jobId }) => {
           setPurchase(null);
-          if (jobId) router.push(`/dreams/${id}/jobs/${jobId}`);
+          if (jobId) router.push(routes.job(id, jobId));
         }}
       />
     </div>

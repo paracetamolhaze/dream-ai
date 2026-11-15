@@ -8,6 +8,7 @@ import { DreamAnalysisSchema, analysisUserPrompt } from "../src/ai/analysis";
 import { redactForLog } from "../src/logger";
 import { resolveLocale } from "../src/i18n";
 import { TEST_BIBLE } from "./helpers";
+import { routes } from "../src/routes";
 
 const TOKEN = "123456789:AAH-test-token-for-unit-tests-only-xxxx";
 
@@ -139,6 +140,16 @@ describe("logging hygiene", () => {
     expect(out).not.toContain("AAHxxxxxxxx");
     expect(out).toContain("[REDACTED]");
     expect(out).not.toContain('"abc"');
+  });
+});
+
+describe("Mini App routes (static-export friendly)", () => {
+  it("keeps dream ids in the query string", () => {
+    expect(routes.dream("abc")).toBe("/dream?id=abc");
+    expect(routes.dream("abc", "video")).toBe("/dream?id=abc&view=video");
+    expect(routes.prepare("abc", { format: "slideshow", regen: true })).toBe("/dream/prepare?id=abc&format=slideshow&regen=1");
+    expect(routes.review("abc", { edit: true })).toBe("/dream/review?id=abc&edit=1");
+    expect(routes.job("abc", "j1")).toBe("/dream/job?id=abc&job=j1");
   });
 });
 

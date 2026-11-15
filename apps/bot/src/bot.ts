@@ -1,6 +1,6 @@
 import { Bot, GrammyError, HttpError, InlineKeyboard, type Context } from "grammy";
 import { eq } from "drizzle-orm";
-import { env } from "@dream/core/env";
+import { env, publicApiUrl } from "@dream/core/env";
 import { AppError, isAppError } from "@dream/core/errors";
 import { msg, type Locale } from "@dream/core/i18n";
 import { logger } from "@dream/core/logger";
@@ -16,6 +16,7 @@ import { getUserByTelegramId, upsertTelegramUser, userLocale, type UserRow } fro
 import { getSettings } from "@dream/core/settings";
 import { webAppUrl } from "@dream/core/telegram/bot-api";
 import { sleep } from "@dream/core/utils";
+import { routes } from "@dream/core/routes";
 
 const log = logger.child({ svc: "bot" });
 
@@ -180,7 +181,7 @@ export function createBot(token: string): Bot {
     await ctx.reply(m.paymentSuccess(result.credits ?? 0, result.balance ?? 0)).catch(() => undefined);
     if (result.jobId) {
       await ctx
-        .reply(m.paymentStartedGeneration, { reply_markup: appKb([[m.btnOpenApp, result.dreamId ? `/dreams/${result.dreamId}/jobs/${result.jobId}` : "/dreams"]]) })
+        .reply(m.paymentStartedGeneration, { reply_markup: appKb([[m.btnOpenApp, result.dreamId ? routes.job(result.dreamId, result.jobId) : "/dreams"]]) })
         .catch(() => undefined);
     }
   });
@@ -272,7 +273,7 @@ export function createBot(token: string): Bot {
     const token = await createAdminLoginToken(ctx.from.id);
     const l = localeOf((await getUserByTelegramId(ctx.from.id)) ?? null, ctx);
     if (!token) return ctx.reply(msg(l).notAdmin);
-    const url = webAppUrl(`/admin/login?token=${encodeURIComponent(token)}`);
+    const url = `${publicApiUrl()}/admin/login?token=${encodeURIComponent(token)}`;
     await ctx.reply(msg(l).adminLogin(url), { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
   });
 
@@ -310,7 +311,7 @@ export function createBot(token: string): Bot {
     if (user.status !== "active") return ctx.reply(m.restricted);
     if (text.trim().length < 15) return ctx.reply(m.unknown, { reply_markup: appKb([[m.btnRecord, "/"]]) });
     const dream = await createTextDream(user, text, { source: "bot_text", confirm: true, replyChatId: ctx.chat.id });
-    await ctx.reply(m.textReceived, { reply_markup: appKb([[m.btnOpenApp, `/dreams/${dream.id}/prepare`]]) });
+    await ctx.reply(m.textReceived, { reply_markup: appKb([[m.btnOpenApp, routes.prepare(dream.id)]]) });
   });
 
   pm.on("message", async (ctx) => {

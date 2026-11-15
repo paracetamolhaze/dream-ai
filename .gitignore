@@ -13,3 +13,10 @@ Thumbs.db
 /tmp/
 npm-debug.log*
 apps/web/next-env.d.ts
+
+# Static Mini App build/deploy (scripts/deploy-miniapp-vercel.mjs)
+.miniapp-build/
+.miniapp-deploy/
+
+# Machine-specific compose overrides (e.g. bundled caddy disabled behind a shared proxy)
+compose.override.yaml

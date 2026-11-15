@@ -9,15 +9,16 @@ import { useLocale, useT } from "@/i18n";
 import { formatDuration, formatShortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CoverImage } from "./cover";
+import { routes } from "@dream/core/routes";
 
 export function cardHref(item: DreamCardDto, tab?: "all" | "slideshow" | "video"): string {
   const s = item.dreamStatus;
-  if (s === "draft" || s === "review" || s === "transcribing" || s === "transcription_failed") return `/dreams/${item.id}/review`;
-  if (s === "analyzing" || s === "analysis_failed") return `/dreams/${item.id}/prepare`;
-  if (item.status === "awaiting") return `/dreams/${item.id}/prepare`;
-  if (item.activeJob && item.durationSec == null) return `/dreams/${item.id}/jobs/${item.activeJob.id}`;
+  if (s === "draft" || s === "review" || s === "transcribing" || s === "transcription_failed") return routes.review(item.id);
+  if (s === "analyzing" || s === "analysis_failed") return routes.prepare(item.id);
+  if (item.status === "awaiting") return routes.prepare(item.id);
+  if (item.activeJob && item.durationSec == null) return routes.job(item.id, item.activeJob.id);
   const view = tab && tab !== "all" ? tab : item.primaryFormat;
-  return view ? `/dreams/${item.id}?view=${view}` : `/dreams/${item.id}`;
+  return view ? routes.dream(item.id, view) : routes.dream(item.id);
 }
 
 function StatusPill({ item }: { item: DreamCardDto }) {

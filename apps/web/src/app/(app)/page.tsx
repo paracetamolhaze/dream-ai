@@ -17,6 +17,7 @@ import { dayPart, formatShortDate } from "@/lib/format";
 import { qk, useLibrary } from "@/lib/queries";
 import type { RecorderStatus } from "@/lib/recorder";
 import { uploadVoice } from "@/lib/voice";
+import { routes } from "@dream/core/routes";
 
 export default function HomePage() {
   const t = useT();
@@ -73,7 +74,7 @@ export default function HomePage() {
             const res = await uploadVoice("/api/dreams/voice", rec, onProgress);
             qc.setQueryData(qk.dream(res.dream.id), res.dream);
             void qc.invalidateQueries({ queryKey: qk.libraryAll });
-            router.push(`/dreams/${res.dream.id}/review`);
+            router.push(routes.review(res.dream.id));
           }}
         />
       </section>

@@ -1,12 +1,22 @@
+"use client";
+
 import Link from "next/link";
-import { headers } from "next/headers";
+import { useSyncExternalStore } from "react";
 import { NightSky } from "@/components/app/background";
 import { LogoMark } from "@/components/app/logo";
 import { dictionaries, resolveLocale } from "@/i18n/dict";
 
-export default async function NotFound() {
-  const lang = (await headers()).get("accept-language")?.split(",")[0];
-  const t = dictionaries[resolveLocale(lang)];
+// Static-friendly: no request headers — the language comes from the browser after hydration.
+const noSubscribe = () => () => {};
+const useBrowserLanguage = () =>
+  useSyncExternalStore(
+    noSubscribe,
+    () => navigator.language,
+    () => "ru",
+  );
+
+export default function NotFound() {
+  const t = dictionaries[resolveLocale(useBrowserLanguage())];
   return (
     <>
       <NightSky />

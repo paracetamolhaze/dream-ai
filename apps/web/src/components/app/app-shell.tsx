@@ -8,15 +8,17 @@ import { Library, MoonStar, User } from "lucide-react";
 import { useT } from "@/i18n";
 import { getWebApp, haptic, supports } from "@/lib/telegram";
 import { cn } from "@/lib/utils";
+import { routes } from "@dream/core/routes";
 
 const TAB_ROOTS = ["/", "/dreams", "/profile"];
 
 function parentPath(pathname: string): string {
-  if (/^\/dreams\/[^/]+\/jobs\/[^/]+/.test(pathname)) return pathname.replace(/\/jobs\/[^/]+$/, "");
-  if (/^\/dreams\/[^/]+\/(review|prepare)/.test(pathname)) return "/dreams";
-  if (/^\/dreams\/[^/]+$/.test(pathname)) return "/dreams";
-  if (pathname.startsWith("/profile/")) return "/profile";
-  return "/";
+  // Read at click time (no useSearchParams in the layout — keeps the static export happy).
+  const id = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("id") : null;
+  if (pathname === "/dream/job" && id) return routes.dream(id);
+  if (pathname === "/dream" || pathname === "/dream/review" || pathname === "/dream/prepare") return routes.library;
+  if (pathname.startsWith("/profile/")) return routes.profile;
+  return routes.home;
 }
 
 /** Shows Telegram's native BackButton on pushed screens. */

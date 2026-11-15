@@ -1,6 +1,6 @@
 import http from "node:http";
 import { webhookCallback } from "grammy";
-import { env, publicAppUrl } from "@dream/core/env";
+import { env, publicApiUrl } from "@dream/core/env";
 import { logger } from "@dream/core/logger";
 import { closeDb } from "@dream/core/db/client";
 import { closeQueues } from "@dream/core/queue";
@@ -65,7 +65,7 @@ async function main() {
     log.info("bot initialized", { username: bot.botInfo.username });
     await configureBot(bot).catch((err) => log.warn("bot configuration failed", { error: (err as Error).message }));
     if (e.BOT_MODE === "webhook") {
-      const url = `${publicAppUrl()}${webhookPath}`;
+      const url = `${publicApiUrl()}${webhookPath}`;
       await bot.api.setWebhook(url, { secret_token: e.TELEGRAM_WEBHOOK_SECRET, allowed_updates: [...ALLOWED_UPDATES], max_connections: 40 });
       log.info("webhook registered", { url });
     } else {

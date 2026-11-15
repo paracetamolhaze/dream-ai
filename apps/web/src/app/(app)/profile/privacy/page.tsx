@@ -40,7 +40,7 @@ export default function PrivacyPage() {
 
   async function deleteAccount() {
     try {
-      await api("/api/profile", { method: "DELETE" });
+      await api("/api/profile", { method: "DELETE", timeoutMs: 120_000 });
       setGoodbye(true);
       setTimeout(() => closeApp(), 3500);
     } catch (err) {

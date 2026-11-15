@@ -58,14 +58,20 @@ export function FullScreenMessage({ title, text, action }: { title: string; text
   );
 }
 
-export function Splash() {
+/** Launch splash. `hint` fades in only if loading takes noticeably long, so a slow network never looks frozen. */
+export function Splash({ hint }: { hint?: string }) {
   return (
-    <div className="relative z-10 flex min-h-app items-center justify-center" aria-busy>
+    <div className="relative z-10 flex min-h-app flex-col items-center justify-center" aria-busy>
       <div className="relative grid size-32 place-items-center">
         <div className="decor-anim absolute inset-0 animate-halo rounded-full bg-[radial-gradient(closest-side,rgb(150_128_255/0.4),transparent)]" />
         <div className="decor-anim absolute inset-3 animate-orbit rounded-full border border-dashed border-lilac-300/20" />
         <LogoMark className="relative size-14 animate-float" />
       </div>
+      {hint ? (
+        <p role="status" className="mt-6 animate-fade-in text-[13.5px] tracking-wide text-fg-muted [animation-delay:3.5s]">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

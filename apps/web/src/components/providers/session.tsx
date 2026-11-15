@@ -7,7 +7,7 @@ import type { ProfileDto, SessionDto } from "@dream/core/dto";
 import { FullScreenMessage, Splash } from "@/components/app/states";
 import { Button } from "@/components/ui/button";
 import { useLocale, useT } from "@/i18n";
-import { api, isApiError } from "@/lib/api";
+import { api, apiUrl, isApiError } from "@/lib/api";
 import { NotInTelegramError, isDevIdentity } from "@/lib/auth";
 import { brand } from "@/lib/brand";
 import { qk, useProfile } from "@/lib/queries";
@@ -19,6 +19,7 @@ type GateState =
   | { kind: "outside" }
   | { kind: "restricted" }
   | { kind: "auth" }
+  | { kind: "network" }
   | { kind: "error" };
 
 interface SessionValue {
@@ -28,6 +29,9 @@ interface SessionValue {
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
+
+/** The first request of a launch fails fast: a dead connection shows "no connection" + retry instead of an endless splash. */
+const SESSION_TIMEOUT_MS = 12_000;
 
 /**
  * Bootstraps the Mini App: Telegram init, server session (user upsert +
@@ -49,7 +53,11 @@ export function SessionGate({ children, botUsername }: { children: React.ReactNo
     queryFn: async () => {
       initTelegram(brand.background);
       // The server records the `app_open` event (with the verified start parameter for attribution).
-      const session = await api<SessionDto>("/api/session", { method: "POST", body: { inTelegram: isInTelegram(), platform: getWebApp()?.platform ?? "web" } });
+      const session = await api<SessionDto>("/api/session", {
+        method: "POST",
+        body: { inTelegram: isInTelegram(), platform: getWebApp()?.platform ?? "web" },
+        timeoutMs: SESSION_TIMEOUT_MS,
+      });
       qc.setQueryData<ProfileDto>(qk.profile, session.user);
       setLocale(session.user.language);
       if (session.redirect && !redirected.current && initialPath.current === "/") {
@@ -76,7 +84,20 @@ export function SessionGate({ children, botUsername }: { children: React.ReactNo
           ? { kind: "restricted" }
           : isApiError(err, "unauthorized")
             ? { kind: isInTelegram() ? "auth" : "outside" }
-            : { kind: "error" };
+            : isApiError(err, "network")
+              ? { kind: "network" }
+              : { kind: "error" };
+
+  // Bot username for the "open in Telegram" button: build-time value or the backend's public config.
+  const publicConfig = useQuery({
+    queryKey: ["public-config"],
+    enabled: state.kind === "outside" && !botUsername,
+    queryFn: async () => {
+      const res = await fetch(apiUrl("/api/config"), { cache: "no-store" });
+      return (await res.json()) as { botUsername: string | null };
+    },
+    staleTime: Infinity,
+  });
 
   // Keep the UI language in sync with the profile (e.g. after changing it in settings).
   const profile = useProfile();
@@ -85,9 +106,9 @@ export function SessionGate({ children, botUsername }: { children: React.ReactNo
     if (language) setLocale(language);
   }, [language, setLocale]);
 
-  if (state.kind === "loading") return <Splash />;
+  if (state.kind === "loading") return <Splash hint={t.app.connecting} />;
   if (state.kind === "outside") {
-    const bot = botUsername;
+    const bot = botUsername ?? publicConfig.data?.botUsername ?? null;
     return (
       <FullScreenMessage
         title={t.app.outsideTitle}
@@ -104,18 +125,14 @@ export function SessionGate({ children, botUsername }: { children: React.ReactNo
   }
   if (state.kind === "restricted") return <FullScreenMessage title={t.app.restrictedTitle} text={t.app.restrictedText} />;
   if (state.kind === "auth") return <FullScreenMessage title={t.app.authErrorTitle} text={t.app.authErrorText} />;
-  if (state.kind === "error")
+  if (state.kind === "network" || state.kind === "error")
     return (
       <FullScreenMessage
-        title={t.app.errorTitle}
-        text={t.app.errorText}
+        title={state.kind === "network" ? t.app.networkTitle : t.app.errorTitle}
+        text={state.kind === "network" ? t.app.networkText : t.app.errorText}
         action={
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => void sessionQ.refetch()}
-          >
-            {t.app.reload}
+          <Button variant="secondary" size="lg" onClick={() => void sessionQ.refetch()}>
+            {state.kind === "network" ? t.app.retry : t.app.reload}
           </Button>
         }
       />

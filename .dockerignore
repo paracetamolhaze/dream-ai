@@ -9,3 +9,5 @@
 !.env.example
 docs
 **/test
+.miniapp-build
+.miniapp-deploy

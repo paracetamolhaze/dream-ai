@@ -95,12 +95,13 @@ async function main() {
   const detail = (await api("GET", `/api/dreams/${created.id}`)).data;
   const slideshow = detail.slideshows[0];
   assert(slideshow && slideshow.url, "11. result available on the dream page");
-  const ranged = await fetch(`${BASE}${slideshow.url}`, { headers: { range: "bytes=0-1023" } });
+  const abs = (u) => (u.startsWith("http") ? u : `${BASE}${u}`); // media URLs are absolute when the API has its own origin
+  const ranged = await fetch(abs(slideshow.url), { headers: { range: "bytes=0-1023" } });
   assert(ranged.status === 206 && (ranged.headers.get("content-type") ?? "").includes("video/mp4"), "11. video streams with Range support");
   const full = await fetch(slideshow.downloadUrl.startsWith("http") ? slideshow.downloadUrl : `${BASE}${slideshow.downloadUrl}`);
   const bytes = Buffer.from(await full.arrayBuffer());
   assert(full.ok && bytes.subarray(4, 8).toString() === "ftyp", `12. MP4 downloaded (${(bytes.length / 1024).toFixed(0)} KB, ${slideshow.durationSec?.toFixed(1)} s)`);
-  const tampered = await fetch(`${BASE}${slideshow.url.replace(/sig=[^&]+/, "sig=AAAA")}`);
+  const tampered = await fetch(abs(slideshow.url.replace(/sig=[^&]+/, "sig=AAAA")));
   assert(tampered.status === 403, "private media: tampered signature rejected");
 
   // 13-14. Library → "Slideshow" tab.

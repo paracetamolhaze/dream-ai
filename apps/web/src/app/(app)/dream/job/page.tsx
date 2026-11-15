@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { Bell, Check, CircleSlash, RotateCcw, TriangleAlert } from "lucide-react";
@@ -22,6 +22,7 @@ import { recallJobOptions, rememberJobOptions } from "@/lib/generation";
 import { isJobActive, qk, useDream, useJob } from "@/lib/queries";
 import { allowsWriteToPm, canRequestWriteAccess, haptic, requestWriteAccess } from "@/lib/telegram";
 import { cn, uuid } from "@/lib/utils";
+import { routes } from "@dream/core/routes";
 
 type StageKey = "analyzing" | "preparing_scenes" | "generating_images" | "generating_video" | "rendering" | "finalizing";
 const ALL: StageKey[] = ["analyzing", "preparing_scenes", "generating_images", "generating_video", "rendering", "finalizing"];
@@ -43,7 +44,17 @@ function currentIndex(job: JobDto, stages: StageKey[]): number {
 }
 
 export default function JobPage() {
-  const { id, jobId } = useParams<{ id: string; jobId: string }>();
+  return (
+    <Suspense>
+      <JobScreen />
+    </Suspense>
+  );
+}
+
+function JobScreen() {
+  const search = useSearchParams();
+  const id = search.get("id") ?? "";
+  const jobId = search.get("job") ?? "";
   const t = useT();
   const router = useRouter();
   const qc = useQueryClient();
@@ -65,7 +76,7 @@ export default function JobPage() {
     void qc.invalidateQueries({ queryKey: qk.dream(id) });
     void qc.invalidateQueries({ queryKey: qk.libraryAll });
     void qc.invalidateQueries({ queryKey: qk.profile });
-    const timer = setTimeout(() => router.replace(`/dreams/${id}?view=${job.mediaType}`), 1200);
+    const timer = setTimeout(() => router.replace(routes.dream(id, job.mediaType)), 1200);
     return () => clearTimeout(timer);
   }, [job?.status, job?.mediaType, id, qc, router]);
 
@@ -92,7 +103,7 @@ export default function JobPage() {
     if (!job) return;
     const options = job.kind === "full" ? recallJobOptions(job.id) : null;
     if (!options) {
-      router.push(job.kind === "full" ? `/dreams/${id}/prepare?format=${job.mediaType}` : `/dreams/${id}`);
+      router.push(job.kind === "full" ? routes.prepare(id, { format: job.mediaType }) : routes.dream(id));
       return;
     }
     const body: StartGenerationBody = { ...options, idempotencyKey: uuid() };
@@ -100,7 +111,7 @@ export default function JobPage() {
     try {
       const res = await api<StartGenerationResponse>(`/api/dreams/${id}/generate`, { method: "POST", body });
       rememberJobOptions(res.job.id, body);
-      router.replace(`/dreams/${id}/jobs/${res.job.id}`);
+      router.replace(routes.job(id, res.job.id));
     } catch (err) {
       setRetrying(false);
       if (isApiError(err, "insufficient_credits")) {
@@ -114,7 +125,7 @@ export default function JobPage() {
   if (jobQ.isError) {
     return (
       <div className="min-h-app">
-        <PageHeader backHref={`/dreams/${id}`} />
+        <PageHeader backHref={routes.dream(id)} />
         <ErrorState title={isApiError(jobQ.error, "not_found") ? t.job.notFound : t.app.errorTitle} text={errorMessage(jobQ.error)} onRetry={() => void jobQ.refetch()} retryLabel={t.common.tryAgain} />
       </div>
     );
@@ -123,7 +134,7 @@ export default function JobPage() {
   if (!job) {
     return (
       <div className="min-h-app">
-        <PageHeader backHref={`/dreams/${id}`} />
+        <PageHeader backHref={routes.dream(id)} />
         <div className="flex justify-center pt-32">
           <Spinner className="size-8" />
         </div>
@@ -141,7 +152,7 @@ export default function JobPage() {
 
   return (
     <div className="flex min-h-app flex-col pb-[calc(var(--app-bottom)+24px)]">
-      <PageHeader backHref={`/dreams/${id}`} />
+      <PageHeader backHref={routes.dream(id)} />
 
       <section className="flex flex-col items-center px-5 pt-2 text-center">
         <AnimatePresence mode="wait" initial={false}>
@@ -218,7 +229,7 @@ export default function JobPage() {
               <RotateCcw />
               {t.job.retry}
             </Button>
-            <Button variant="secondary" block onClick={() => router.push(`/dreams/${id}`)}>
+            <Button variant="secondary" block onClick={() => router.push(routes.dream(id))}>
               {t.job.backToDream}
             </Button>
           </div>
@@ -228,7 +239,7 @@ export default function JobPage() {
       {job.status === "cancelled" ? (
         <section className="mt-6 px-5 text-center">
           {job.creditsCost > 0 || job.usedFreeAllowance ? <p className="text-[14px] text-mint-300">{job.usedFreeAllowance ? t.job.freeReturned : t.job.creditsReturned}</p> : null}
-          <Button variant="secondary" className="mt-5" onClick={() => router.push(`/dreams/${id}`)}>
+          <Button variant="secondary" className="mt-5" onClick={() => router.push(routes.dream(id))}>
             {t.job.backToDream}
           </Button>
         </section>
@@ -310,7 +321,7 @@ export default function JobPage() {
         intent={purchase?.intent}
         onDone={({ jobId: newJob }) => {
           setPurchase(null);
-          if (newJob) router.replace(`/dreams/${id}/jobs/${newJob}`);
+          if (newJob) router.replace(routes.job(id, newJob));
         }}
       />
     </div>

@@ -9,6 +9,7 @@ import { downloadFileName } from "@dream/core/services/media";
 import { userLocale, type UserRow } from "@dream/core/services/users";
 import { getObjectBuffer } from "@dream/core/storage";
 import { botApi, hasBotToken, InlineKeyboard, InputFile, webAppUrl } from "@dream/core/telegram/bot-api";
+import { routes } from "@dream/core/routes";
 
 const MAX_UPLOAD = 49 * 1024 * 1024;
 
@@ -31,7 +32,7 @@ export async function sendMediaToChat(user: UserRow, dreamId: string, mediaId: s
   const { media, title } = await loadOwnedMedia(user, dreamId, mediaId);
   const m = msg(userLocale(user));
   const name = downloadFileName(title, media);
-  const kb = new InlineKeyboard().webApp(m.btnOpenApp, webAppUrl(`/dreams/${dreamId}`));
+  const kb = new InlineKeyboard().webApp(m.btnOpenApp, webAppUrl(routes.dream(dreamId)));
   try {
     if (media.mediaType === "image") {
       if ((media.sizeBytes ?? 0) > MAX_UPLOAD) throw new AppError("media_unavailable", "File too large for Telegram");

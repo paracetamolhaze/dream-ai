@@ -15,7 +15,7 @@ import { TextInput } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { useErrorMessage, useLocale, useT } from "@/i18n";
 import type { Locale } from "@/i18n";
-import { api } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/queries";
 import { openTelegramLink } from "@/lib/telegram";
@@ -120,7 +120,7 @@ export default function ProfilePage() {
 
         {me.isAdmin ? (
           <MenuGroup>
-            <MenuItem icon={<ShieldCheck />} label={t.profile.menu.admin} href="/admin/login" external />
+            <MenuItem icon={<ShieldCheck />} label={t.profile.menu.admin} href={apiUrl("/admin/login")} external />
           </MenuGroup>
         ) : null}
       </section>

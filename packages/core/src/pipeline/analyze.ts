@@ -19,6 +19,7 @@ import { getSettings } from "../settings";
 import { InlineKeyboard, webAppUrl } from "../telegram/bot-api";
 import { clamp, seedFrom, sha256, truncate } from "../utils";
 import { classifyError, isFinalAttempt, releaseLock, tryLock, type AttemptInfo } from "./common";
+import { routes } from "../routes";
 
 const log = logger.child({ step: "analysis" });
 
@@ -356,7 +357,7 @@ export async function processAnalysis(payload: AnalysisPayload, attempt: Attempt
     await qualifyReferral(user.id, "first_dream");
     if (payload.replyChatId) {
       const m = msg(locale);
-      await sendToChat(payload.replyChatId, m.analysisReady(applied.title), new InlineKeyboard().webApp(m.btnChooseFormat, webAppUrl(`/dreams/${dream.id}/prepare`)));
+      await sendToChat(payload.replyChatId, m.analysisReady(applied.title), new InlineKeyboard().webApp(m.btnChooseFormat, webAppUrl(routes.prepare(dream.id))));
     }
     if (settings.limits.freePreviewEnabled) {
       await enqueue(QUEUES.preview, { dreamId: dream.id }, { jobId: jobIdFor("preview", dream.id, applied.version), attempts: 2, backoff: { type: "exponential", delay: 10_000 } }).catch((err: Error) =>

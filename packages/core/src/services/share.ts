@@ -2,7 +2,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { dreamMedia, dreams, shareLinks, users } from "../db/schema";
 import type { ShareLinkDto } from "../dto";
-import { publicAppUrl } from "../env";
+import { publicApiUrl } from "../env";
 import { AppError } from "../errors";
 import { randomToken } from "../utils";
 import { track } from "./analytics";
@@ -16,7 +16,7 @@ import type { UserRow } from "./users";
  */
 
 function dto(l: typeof shareLinks.$inferSelect): ShareLinkDto {
-  return { id: l.id, mediaId: l.mediaId, token: l.token, url: `${publicAppUrl()}/s/${l.token}`, showTitle: l.showTitle, showText: l.showText, views: l.views, createdAt: l.createdAt.toISOString() };
+  return { id: l.id, mediaId: l.mediaId, token: l.token, url: `${publicApiUrl()}/s/${l.token}`, showTitle: l.showTitle, showText: l.showText, views: l.views, createdAt: l.createdAt.toISOString() };
 }
 
 export async function createShareLink(user: UserRow, dreamId: string, mediaId: string, opts: { showTitle: boolean; showText: boolean }): Promise<ShareLinkDto> {

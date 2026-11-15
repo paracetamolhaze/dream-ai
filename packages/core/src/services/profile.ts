@@ -6,6 +6,7 @@ import { dreamsCount, getUserSettings, isAdminTelegramId, parseStartParam, refer
 import { getDb } from "../db/client";
 import { dreams } from "../db/schema";
 import { and, eq, isNull } from "drizzle-orm";
+import { routes } from "../routes";
 
 export async function buildProfile(user: UserRow): Promise<ProfileDto> {
   const settings = await getSettings();
@@ -57,7 +58,7 @@ export async function resolveStartRedirect(user: UserRow, startParam?: string | 
       .from(dreams)
       .where(and(eq(dreams.id, sp.value), eq(dreams.userId, user.id), isNull(dreams.deletedAt)))
       .catch(() => []);
-    return d ? `/dreams/${d.id}` : "/dreams";
+    return d ? routes.dream(d.id) : "/dreams";
   }
   if (sp.kind === "page") {
     const pages: Record<string, string> = { library: "/dreams", profile: "/profile", buy: "/profile/balance", record: "/", write: "/write", invite: "/profile/invite" };

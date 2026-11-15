@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { ChevronRight, Download, Film, Heart, Images, MessageCircle, PenLine, Play, RefreshCw, Share2, Trash2, TriangleAlert } from "lucide-react";
@@ -30,6 +30,7 @@ import { fileNameFor, formatDate, formatDuration } from "@/lib/format";
 import { qk, useDream, useQuote } from "@/lib/queries";
 import { haptic } from "@/lib/telegram";
 import { cn, uuid } from "@/lib/utils";
+import { routes } from "@dream/core/routes";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 type View = "slideshow" | "video";
@@ -43,7 +44,7 @@ export default function DreamPage() {
 }
 
 function DreamDetail() {
-  const { id } = useParams<{ id: string }>();
+  const id = useSearchParams().get("id") ?? "";
   const search = useSearchParams();
   const t = useT();
   const [locale] = useLocale();
@@ -135,7 +136,7 @@ function DreamDetail() {
     try {
       const res = await api<StartGenerationResponse>(`/api/dreams/${id}/scenes/${scene.id}/regenerate`, { method: "POST", body: { kind, idempotencyKey: uuid() } });
       void qc.invalidateQueries({ queryKey: qk.profile });
-      router.push(`/dreams/${id}/jobs/${res.job.id}`);
+      router.push(routes.job(id, res.job.id));
     } catch (err) {
       if (isApiError(err, "insufficient_credits")) setPurchaseOpen(true);
       else toast.error(errorMessage(err));
@@ -146,7 +147,7 @@ function DreamDetail() {
 
   async function remove() {
     try {
-      await api(`/api/dreams/${id}`, { method: "DELETE" });
+      await api(`/api/dreams/${id}`, { method: "DELETE", timeoutMs: 120_000 });
       qc.removeQueries({ queryKey: qk.dream(id) });
       void qc.invalidateQueries({ queryKey: qk.libraryAll });
       toast.success(t.dream.deleted);
@@ -206,7 +207,7 @@ function DreamDetail() {
       </section>
 
       {activeJob ? (
-        <Link href={`/dreams/${id}/jobs/${activeJob.id}`} className="glass mx-5 mt-5 flex items-center gap-3.5 rounded-[22px] p-4 transition-transform active:scale-[0.99]">
+        <Link href={routes.job(id, activeJob.id)} className="glass mx-5 mt-5 flex items-center gap-3.5 rounded-[22px] p-4 transition-transform active:scale-[0.99]">
           <Spinner className="size-5 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-fg">{t.dream.activeJob(activeJob.mediaType === "video", activeJob.progress)}</p>
@@ -215,7 +216,7 @@ function DreamDetail() {
           <ChevronRight className="size-5 text-fg-dim" aria-hidden />
         </Link>
       ) : d.lastFailedJob ? (
-        <Link href={`/dreams/${id}/jobs/${d.lastFailedJob.id}`} className="mx-5 mt-5 flex items-center gap-3 rounded-[22px] border border-rose-400/20 bg-rose-400/[0.06] p-4">
+        <Link href={routes.job(id, d.lastFailedJob.id)} className="mx-5 mt-5 flex items-center gap-3 rounded-[22px] border border-rose-400/20 bg-rose-400/[0.06] p-4">
           <TriangleAlert className="size-5 shrink-0 text-rose-300" aria-hidden />
           <p className="flex-1 text-[14px] text-fg">{t.dream.lastFailed}</p>
           <ChevronRight className="size-5 text-fg-dim" aria-hidden />
@@ -263,9 +264,9 @@ function DreamDetail() {
               text={t.dream.noResultText}
               action={
                 d.status === "ready" ? (
-                  <Button onClick={() => router.push(`/dreams/${id}/prepare`)}>{t.dream.chooseFormat}</Button>
+                  <Button onClick={() => router.push(routes.prepare(id))}>{t.dream.chooseFormat}</Button>
                 ) : (
-                  <Button onClick={() => router.push(`/dreams/${id}/review`)}>{t.common.continue}</Button>
+                  <Button onClick={() => router.push(routes.review(id))}>{t.common.continue}</Button>
                 )
               }
             />
@@ -286,11 +287,11 @@ function DreamDetail() {
 
       {d.status === "ready" ? (
         <section className="mt-3 grid grid-cols-2 gap-2 px-5">
-          <Button variant="secondary" block onClick={() => router.push(`/dreams/${id}/prepare?format=${view ? other : "video"}`)}>
+          <Button variant="secondary" block onClick={() => router.push(routes.prepare(id, { format: view ? other : "video" }))}>
             {other === "video" ? <Film /> : <Images />}
             {other === "video" ? t.dream.createVideo : t.dream.createSlideshow}
           </Button>
-          <Button variant="secondary" block disabled={!view} onClick={() => router.push(`/dreams/${id}/prepare?format=${view ?? "slideshow"}&regen=1`)}>
+          <Button variant="secondary" block disabled={!view} onClick={() => router.push(routes.prepare(id, { format: view ?? "slideshow", regen: true }))}>
             <RefreshCw />
             {t.dream.regenerate}
           </Button>

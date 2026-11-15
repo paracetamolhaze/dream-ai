@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Mic, TriangleAlert } from "lucide-react";
@@ -22,6 +22,7 @@ import { MAX_DREAM_TEXT, MIN_DREAM_TEXT } from "@/lib/constants";
 import { qk, useDream } from "@/lib/queries";
 import { safeSession, saveSession } from "@/lib/utils";
 import { uploadVoice } from "@/lib/voice";
+import { routes } from "@dream/core/routes";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -39,7 +40,7 @@ export default function ReviewPage() {
 }
 
 function Review() {
-  const { id } = useParams<{ id: string }>();
+  const id = useSearchParams().get("id") ?? "";
   const search = useSearchParams();
   const editMode = search.get("edit") === "1";
   const t = useT();
@@ -59,7 +60,7 @@ function Review() {
   // Already confirmed → continue to format choice (unless the user came back to edit).
   useEffect(() => {
     if (!d || editMode) return;
-    if (d.status === "analyzing" || d.status === "ready" || d.status === "analysis_failed") router.replace(`/dreams/${id}/prepare`);
+    if (d.status === "analyzing" || d.status === "ready" || d.status === "analysis_failed") router.replace(routes.prepare(id));
   }, [d, editMode, id, router]);
 
   const base = d ? (d.editedText ?? d.originalText ?? "") : "";
@@ -79,7 +80,7 @@ function Review() {
       qc.setQueryData(qk.dream(id), res.dream);
       saveSession(draftKey, null);
       void qc.invalidateQueries({ queryKey: qk.libraryAll });
-      router.replace(`/dreams/${id}/prepare`);
+      router.replace(routes.prepare(id));
     } catch (err) {
       toast.error(errorMessage(err));
       setBusy(false);

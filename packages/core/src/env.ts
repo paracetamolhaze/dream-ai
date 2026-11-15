@@ -25,6 +25,13 @@ const EnvSchema = z.object({
   APP_NAME: z.string().default("DREAM AI"),
   /** Public HTTPS origin of the Mini App, e.g. https://dream.example.com */
   PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  /**
+   * Public HTTPS origin of the backend (API, media, admin, share pages, bot webhook) when the
+   * Mini App UI is hosted elsewhere (e.g. a static build on Vercel). Defaults to PUBLIC_APP_URL.
+   */
+  PUBLIC_API_URL: optionalString,
+  /** Extra browser origins allowed to call the API (comma-separated); PUBLIC_APP_URL is always allowed. */
+  CORS_ORIGINS: optionalString,
   /** Server-side origin used by the bot/worker to build links (defaults to PUBLIC_APP_URL). */
   INTERNAL_APP_URL: optionalString,
 
@@ -154,6 +161,17 @@ export function internalAppUrl(): string {
   return (e.INTERNAL_APP_URL ?? e.PUBLIC_APP_URL).replace(/\/$/, "");
 }
 
+/** Origin of the Mini App UI (web_app buttons, menu button, BotFather). */
 export function publicAppUrl(): string {
   return env().PUBLIC_APP_URL.replace(/\/$/, "");
+}
+
+/** Origin of the backend: API, media, admin panel, share pages, Telegram webhook. */
+export function publicApiUrl(): string {
+  return (env().PUBLIC_API_URL ?? env().PUBLIC_APP_URL).replace(/\/$/, "");
+}
+
+/** True when the UI and the backend live on different origins (static Mini App on a CDN). */
+export function apiIsSeparate(): boolean {
+  return publicApiUrl() !== publicAppUrl();
 }

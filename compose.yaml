@@ -7,6 +7,8 @@ x-app-env: &app-env
   APP_ENV: ${APP_ENV:-production}
   APP_NAME: ${APP_NAME:-DREAM AI}
   PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL in .env}
+  PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+  CORS_ORIGINS: ${CORS_ORIGINS:-}
   INTERNAL_APP_URL: http://web:3000
   DATABASE_URL: postgres://${POSTGRES_USER:-dream}:${POSTGRES_PASSWORD:-dream}@postgres:5432/${POSTGRES_DB:-dream}
   REDIS_URL: redis://redis:6379
@@ -189,6 +191,21 @@ services:
     depends_on:
       web: { condition: service_healthy }
     profiles: ["app"]
+
+  # Optional: keeps a DuckDNS name pointed at this machine's (dynamic) public IP.
+  #   DUCKDNS_DOMAINS=mysub  DUCKDNS_TOKEN=…   docker compose --profile duckdns up -d duckdns
+  duckdns:
+    image: curlimages/curl:8.11.1
+    restart: unless-stopped
+    environment:
+      DUCKDNS_DOMAINS: ${DUCKDNS_DOMAINS:-}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:-}
+    # The token is read from the environment inside the shell — it never appears in args or logs.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - 'while true; do r=$$(curl -fsS -m 30 "https://www.duckdns.org/update?domains=$${DUCKDNS_DOMAINS}&token=$${DUCKDNS_TOKEN}&ip=") || r=error; echo "$$(date -u +%Y-%m-%dT%H:%M:%SZ) duckdns update: $$r"; sleep 300; done'
+    profiles: ["duckdns"]
 
 volumes:
   pgdata:
