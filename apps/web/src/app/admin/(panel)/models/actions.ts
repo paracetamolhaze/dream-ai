@@ -23,14 +23,18 @@ export const saveModelsAction = adminAction({
     const [sttProvider, ...rest] = input.stt.split(":");
     const custom = input.stt === "openai:custom";
     if (custom && !input.sttCustomModel) throw new AppError("validation_failed", "Enter the custom STT model name");
-    const sttModel = custom ? input.sttCustomModel! : rest.join(":");
+    // Catalog entries carry their adapter (Groq models run through the OpenAI-compatible one).
+    const sttSpec = STT_MODELS.find((m) => m.id === input.stt);
+    const sttModel = custom ? input.sttCustomModel! : (sttSpec?.model ?? rest.join(":"));
     if (!custom && !STT_MODELS.some((m) => m.id === input.stt)) throw new AppError("validation_failed", "Unknown STT model");
-    if (!IMAGE_MODELS.some((m) => m.id === input.imageModel)) throw new AppError("validation_failed", "Unknown image model");
+    const imageSpec = IMAGE_MODELS.find((m) => m.id === input.imageModel);
+    if (!imageSpec) throw new AppError("validation_failed", "Unknown image model");
+    if (imageSpec.requiresReferenceImage) throw new AppError("validation_failed", "The main image model must draw from text; edit-only models belong in the reference field");
     const reference = input.referenceModel ? IMAGE_MODELS.find((m) => m.id === input.referenceModel) : null;
     if (input.referenceModel && (!reference || !reference.supportsReferenceImage)) throw new AppError("validation_failed", "Reference model must accept a reference image");
     if (!VIDEO_MODELS.some((m) => m.id === input.videoModel)) throw new AppError("validation_failed", "Unknown video model");
     const value = {
-      stt: { provider: sttProvider, model: sttModel, language: input.sttLanguage },
+      stt: { provider: sttSpec?.provider ?? sttProvider, model: sttModel, language: input.sttLanguage },
       llm: { provider: input.llmProvider, model: input.llmProvider === "demo" ? "demo" : input.llmModel },
       image: { model: input.imageModel, referenceModel: reference?.id ?? null },
       video: { model: input.videoModel },

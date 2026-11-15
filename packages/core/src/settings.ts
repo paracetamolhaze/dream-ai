@@ -45,11 +45,12 @@ export const SettingsSchemas = {
     mode: z.enum(["always", "free_only", "never"]).default("free_only"),
     text: z.string().min(1).max(60).default("Made with DREAM AI"),
   }),
+  // Best quality per dollar as of 2026-11 (see ai/models.ts for prices and alternatives).
   models: ModelSelectionSchema.default({
-    stt: { provider: "openai", model: "whisper-1", language: "auto" },
+    stt: { provider: "openai", model: "gpt-transcribe", language: "auto" },
     llm: { provider: "anthropic", model: "claude-opus-5-5" },
-    image: { model: "fal:flux-dev", referenceModel: "fal:flux-kontext-pro" },
-    video: { model: "fal:kling-2.1-standard" },
+    image: { model: "fal:muse-image", referenceModel: "fal:muse-image-edit" },
+    video: { model: "fal:heygen-video" },
   }),
   concurrency: z.object({
     transcription: z.number().int().min(1).max(20).default(3),

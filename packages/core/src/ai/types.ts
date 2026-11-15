@@ -100,6 +100,11 @@ export interface ImageModelSpec {
   /** Requires an input image (editing models such as FLUX Kontext). */
   requiresReferenceImage?: boolean;
   costPerImageUsd: number;
+  /**
+   * Catalog id used for a frame this model refuses or keeps failing on — e.g. a
+   * partner API declining a dark dream. Never a demo model.
+   */
+  fallbackId?: string;
   buildInput(req: ImageRequest): Record<string, unknown>;
 }
 

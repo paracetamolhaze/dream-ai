@@ -53,8 +53,9 @@ export class OpenAiSttProvider implements SttProvider {
     form.set("file", new Blob([new Uint8Array(data)], { type: input.mime }), input.fileName);
     form.set("model", this.spec.model);
     form.set("response_format", this.spec.verboseJson ? "verbose_json" : "json");
-    if (input.language) form.set("language", input.language);
-    const res = await fetchJson<{ text?: string; language?: string; duration?: number }>("openai-stt", url(this.conn, "/audio/transcriptions"), {
+    // gpt-transcribe takes `languages` instead of `language`; it detects the language itself, so no hint is sent.
+    if (input.language && ("languageHint" in this.spec ? this.spec.languageHint !== false : true)) form.set("language", input.language);
+    const res = await fetchJson<{ text?: string; language?: string; languages?: unknown[]; duration?: number }>("openai-stt", url(this.conn, "/audio/transcriptions"), {
       form,
       headers: headers(this.conn),
       timeoutMs: 10 * 60_000,
@@ -64,7 +65,7 @@ export class OpenAiSttProvider implements SttProvider {
     const durationSec = res?.duration ?? input.durationSec;
     return {
       text,
-      language: normalizeLanguage(res?.language) ?? input.language,
+      language: normalizeLanguage(res?.language ?? (typeof res?.languages?.[0] === "string" ? res.languages[0] : undefined)) ?? input.language,
       durationSec,
       costUsd: ((durationSec ?? 60) / 60) * this.spec.costPerMinuteUsd,
     };

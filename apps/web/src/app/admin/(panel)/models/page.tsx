@@ -80,7 +80,7 @@ export default async function ModelsPage() {
               </Field>
               <Field label="Модель изображений" hint={demo.image ? "будет использован демо-провайдер" : undefined}>
                 <select name="imageModel" className="adm-select" defaultValue={m.image.model}>
-                  {IMAGE_MODELS.map((i) => (
+                  {IMAGE_MODELS.filter((i) => !i.requiresReferenceImage || i.id === m.image.model).map((i) => (
                     <option key={i.id} value={i.id}>
                       {i.label}
                     </option>

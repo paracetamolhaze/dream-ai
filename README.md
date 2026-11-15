@@ -161,10 +161,23 @@ loopback: из той же сети домен не открывается, хо
 
 | Задача | Провайдер (адаптер) | Переменная | По умолчанию |
 |---|---|---|---|
-| Распознавание речи | OpenAI Whisper / gpt-4o-transcribe; любой OpenAI-совместимый, вкл. локальный faster-whisper-server | `OPENAI_API_KEY` или `STT_BASE_URL` | `whisper-1`, автоопределение языка |
-| Анализ сна | Anthropic Claude (официальный SDK, структурированный вывод + server-side fallback при отказе); OpenAI-совместимый (json_schema) | `ANTHROPIC_API_KEY` / `LLM_OPENAI_*` | `claude-opus-5-5` |
-| Изображения | fal.ai (FLUX schnell/dev, FLUX Kontext, Qwen-Image/Edit), Replicate (FLUX schnell/dev, Kontext), OpenAI-совместимый (`gpt-image-1`, LocalAI) | `FAL_KEY` / `REPLICATE_API_TOKEN` / `IMAGE_OPENAI_*` | `fal:flux-dev` + reference `fal:flux-kontext-pro` |
-| Видео | fal.ai (Kling 2.1 Standard/Master, Hailuo-02 Standard), Runway Gen-4 Turbo; адаптер Replicate готов для моделей, добавленных в каталог | `FAL_KEY` / `RUNWAY_API_KEY` / `REPLICATE_API_TOKEN` | `fal:kling-2.1-standard` |
+| Распознавание речи | OpenAI (`gpt-transcribe`, Whisper); Groq `whisper-large-v3` и любой OpenAI-совместимый, вкл. локальный faster-whisper-server | `OPENAI_API_KEY` или `STT_API_KEY` + `STT_BASE_URL` | `gpt-transcribe`, автоопределение языка |
+| Анализ сна | Anthropic Claude (официальный SDK, структурированный вывод, server-side fallback при отказе у моделей, где он есть); OpenAI-совместимый (json_schema) | `ANTHROPIC_API_KEY` / `LLM_OPENAI_*` | `claude-opus-5-5` |
+| Изображения | fal.ai (Meta Muse, FLUX.3 klein, Seedream 5.5, FLUX.1, FLUX Kontext, Qwen-Image), Replicate (FLUX, Kontext), OpenAI-совместимый (`gpt-image-1`, LocalAI) | `FAL_KEY` / `REPLICATE_API_TOKEN` / `IMAGE_OPENAI_*` | `fal:muse-image` + reference `fal:muse-image-edit`, запасная `fal:flux3-klein` |
+| Видео | fal.ai (HeyGen Video, MiniMax H3, Seedance 1.0 Pro Fast, Hailuo-02, Kling 2.1), Runway Gen-4 Turbo; адаптер Replicate готов для моделей, добавленных в каталог | `FAL_KEY` / `RUNWAY_API_KEY` / `REPLICATE_API_TOKEN` | `fal:heygen-video` (768p) |
+
+**Себестоимость сна** (цены fal.ai, OpenAI и Anthropic на ноябрь 2026; 8 сцен, голос 2 мин):
+
+| | Слайд-шоу | Видео 10 с | Видео 30 с | Видео 60 с |
+|---|---|---|---|---|
+| По умолчанию (анализ Claude Opus 5.5) | ≈ $0.23 | ≈ $0.37 | ≈ $0.81 | ≈ $1.43 |
+| То же с анализом на Claude Haiku 5.5 | ≈ $0.11 | ≈ $0.25 | ≈ $0.69 | ≈ $1.31 |
+| Премиум (Seedream 5.5 + MiniMax H3) | ≈ $0.50 | ≈ $0.87 | ≈ $2.22 | ≈ $4.10 |
+
+Кадр стоит $0.01 (Muse), секунда видео — $0.02 (HeyGen 768p), анализ сна — ≈ $0.12 (Opus 5.5),
+≈ $0.06 (Sonnet 5.5) или ≈ $0.003 (Haiku 5.5). Если основная модель изображений отказала (бывает
+у партнёрских API на мрачных снах) или так и не ответила, этот кадр рисует запасная модель (`fallbackId`
+в каталоге). Модели переключаются в *Админка → Модели*.
 
 Возможности каждой модели (seed, negative prompt, reference image, допустимые длительности клипов, цена)
 описаны в каталоге [`packages/core/src/ai/models.ts`](packages/core/src/ai/models.ts). Пользователю

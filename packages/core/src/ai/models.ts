@@ -24,7 +24,107 @@ function imageRef(req: ImageRequest): string | undefined {
   return req.referenceImage?.url ?? req.referenceImage?.dataUri;
 }
 
+/** Same aspect, short side 1080 px: Seedream bills a flat price up to 2.61 MP, so frames get Full HD for free. */
+function fullHd(req: { width: number; height: number }): { width: number; height: number } {
+  const k = 1080 / Math.min(req.width, req.height);
+  return { width: Math.round((req.width * k) / 8) * 8, height: Math.round((req.height * k) / 8) * 8 };
+}
+
+// Prices: fal.ai model pages, checked 2026-11-15. fal bills per-megapixel models in
+// 1024×1024 units rounded up, so an 864×1536 frame (1.27 MP) is billed as 2 MP.
 export const IMAGE_MODELS: ImageModelSpec[] = [
+  {
+    id: "fal:muse-image",
+    provider: "fal",
+    model: "meta/muse-image/text-to-image",
+    label: "Meta Muse Image · fal.ai ($0.01, recommended)",
+    supportsSeed: false,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: false,
+    costPerImageUsd: 0.01,
+    fallbackId: "fal:flux3-klein",
+    buildInput: (req) => ({ prompt: req.prompt, aspect_ratio: aspect(req), num_images: 1, output_format: "jpeg" }),
+  },
+  {
+    id: "fal:muse-image-edit",
+    provider: "fal",
+    model: "meta/muse-image/edit",
+    label: "Meta Muse Image Edit (reference image) · fal.ai ($0.01, recommended)",
+    supportsSeed: false,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    requiresReferenceImage: true,
+    costPerImageUsd: 0.01,
+    fallbackId: "fal:flux3-klein-edit",
+    buildInput: (req) => ({ prompt: req.prompt, image_urls: [imageRef(req)], aspect_ratio: aspect(req), num_images: 1, output_format: "jpeg" }),
+  },
+  {
+    id: "fal:flux3-klein",
+    provider: "fal",
+    model: "blackforestlabs/flux-3/klein/text-to-image",
+    label: "FLUX.3 [klein] · fal.ai (~$0.011, budget)",
+    supportsSeed: true,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: false,
+    costPerImageUsd: 0.011,
+    buildInput: (req) => ({
+      prompt: req.prompt,
+      image_size: { width: req.width, height: req.height },
+      seed: req.seed,
+      num_images: 1,
+      // Prompts are already composed (character tags must stay verbatim).
+      enable_prompt_expansion: false,
+      enable_safety_checker: true,
+      output_format: "jpeg",
+    }),
+  },
+  {
+    id: "fal:flux3-klein-edit",
+    provider: "fal",
+    model: "blackforestlabs/flux-3/klein/edit-image",
+    label: "FLUX.3 [klein] Edit (reference image) · fal.ai (~$0.011, budget)",
+    supportsSeed: true,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    requiresReferenceImage: true,
+    costPerImageUsd: 0.011,
+    buildInput: (req) => ({
+      prompt: req.prompt,
+      image_urls: [imageRef(req)],
+      image_size: { width: req.width, height: req.height },
+      seed: req.seed,
+      num_images: 1,
+      enable_prompt_expansion: false,
+      enable_safety_checker: true,
+      output_format: "jpeg",
+    }),
+  },
+  {
+    id: "fal:seedream-5.5",
+    provider: "fal",
+    model: "bytedance/seedream/v5.5/text-to-image",
+    label: "Seedream 5.5 · fal.ai ($0.03, premium)",
+    supportsSeed: false,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: false,
+    costPerImageUsd: 0.03,
+    fallbackId: "fal:flux3-klein",
+    buildInput: (req) => ({ prompt: req.prompt, image_size: fullHd(req), num_images: 1, output_format: "jpeg", enable_safety_checker: true }),
+  },
+  {
+    id: "fal:seedream-5.5-edit",
+    provider: "fal",
+    model: "bytedance/seedream/v5.5/edit",
+    label: "Seedream 5.5 Edit (reference image) · fal.ai ($0.042, premium)",
+    supportsSeed: false,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    requiresReferenceImage: true,
+    // $0.03 per output + $0.012 per input image.
+    costPerImageUsd: 0.042,
+    fallbackId: "fal:flux3-klein-edit",
+    buildInput: (req) => ({ prompt: req.prompt, image_urls: [imageRef(req)], image_size: fullHd(req), num_images: 1, output_format: "jpeg", enable_safety_checker: true }),
+  },
   {
     id: "fal:flux-schnell",
     provider: "fal",
@@ -33,7 +133,7 @@ export const IMAGE_MODELS: ImageModelSpec[] = [
     supportsSeed: true,
     supportsNegativePrompt: false,
     supportsReferenceImage: false,
-    costPerImageUsd: 0.004,
+    costPerImageUsd: 0.006,
     buildInput: (req) => ({
       prompt: req.prompt,
       image_size: { width: req.width, height: req.height },
@@ -51,7 +151,7 @@ export const IMAGE_MODELS: ImageModelSpec[] = [
     supportsSeed: true,
     supportsNegativePrompt: false,
     supportsReferenceImage: false,
-    costPerImageUsd: 0.035,
+    costPerImageUsd: 0.05,
     buildInput: (req) => ({
       prompt: req.prompt,
       image_size: { width: req.width, height: req.height },
@@ -91,7 +191,7 @@ export const IMAGE_MODELS: ImageModelSpec[] = [
     supportsSeed: true,
     supportsNegativePrompt: true,
     supportsReferenceImage: false,
-    costPerImageUsd: 0.03,
+    costPerImageUsd: 0.04,
     buildInput: (req) => ({
       prompt: req.prompt,
       negative_prompt: req.negativePrompt || undefined,
@@ -185,18 +285,69 @@ function durationFrom(spec: { clipDurations: number[] }, req: VideoRequest): num
   return spec.clipDurations.reduce((best, d) => (Math.abs(d - req.durationSec) < Math.abs(best - req.durationSec) ? d : best), spec.clipDurations[0]!);
 }
 
+// Prices: fal.ai model pages, checked 2026-11-15. Resolution is always sent explicitly —
+// several models default to 1080p/2K, which costs 2–3× more.
 export const VIDEO_MODELS: VideoModelSpec[] = [
+  {
+    id: "fal:heygen-video",
+    provider: "fal",
+    model: "heygen/heygen-video/image-to-video",
+    label: "HeyGen Video 768p · fal.ai ($0.02/s, recommended)",
+    clipDurations: [5, 10],
+    supportsNegativePrompt: false,
+    supportsSeed: true,
+    imageToVideo: true,
+    supportsCancel: true,
+    costPerSecondUsd: 0.02,
+    buildInput(req, image) {
+      // Clips are normalised to the output canvas (cover-crop, audio dropped) when assembled.
+      return { prompt: req.prompt, image_url: image, duration: durationFrom(this, req), resolution: "768p", seed: req.seed, enable_safety_checker: true };
+    },
+  },
+  {
+    id: "fal:minimax-h3",
+    provider: "fal",
+    model: "minimax/h3/image-to-video",
+    label: "MiniMax H3 768P · fal.ai ($0.06/s, premium)",
+    clipDurations: [5, 10],
+    supportsNegativePrompt: false,
+    supportsSeed: true,
+    imageToVideo: true,
+    supportsCancel: true,
+    costPerSecondUsd: 0.06,
+    buildInput(req, image) {
+      // The output canvas follows the start image; the default resolution is 2K ($0.13/s).
+      return { prompt: req.prompt, image_url: image, duration: durationFrom(this, req), resolution: "768P", seed: req.seed, enable_safety_checker: true };
+    },
+  },
+  {
+    id: "fal:seedance-1-pro-fast",
+    provider: "fal",
+    model: "fal-ai/bytedance/seedance/v1/pro/fast/image-to-video",
+    label: "Seedance 1.0 Pro Fast 720p · fal.ai (~$0.022/s)",
+    clipDurations: [5, 10],
+    supportsNegativePrompt: false,
+    supportsSeed: true,
+    imageToVideo: true,
+    supportsCancel: true,
+    // $1 per 1M video tokens; 720p ≈ 21,600 tokens per second.
+    costPerSecondUsd: 0.022,
+    buildInput(req, image) {
+      // Frames are always portrait (FRAME_W × FRAME_H), so the clip is requested as 9:16.
+      return { prompt: req.prompt, image_url: image, aspect_ratio: "9:16", resolution: "720p", duration: String(durationFrom(this, req)), seed: req.seed, camera_fixed: false, enable_safety_checker: true };
+    },
+  },
   {
     id: "fal:kling-2.1-standard",
     provider: "fal",
     model: "fal-ai/kling-video/v2.1/standard/image-to-video",
-    label: "Kling 2.1 Standard · fal.ai",
+    label: "Kling 2.1 Standard · fal.ai (deprecated by fal)",
     clipDurations: [5, 10],
     supportsNegativePrompt: true,
     supportsSeed: false,
     imageToVideo: true,
     supportsCancel: true,
-    costPerSecondUsd: 0.05,
+    costPerSecondUsd: 0.056,
     buildInput(req, image) {
       return { prompt: req.prompt, image_url: image, duration: String(durationFrom(this, req)), negative_prompt: req.negativePrompt || "blur, distort, low quality", cfg_scale: 0.5 };
     },
@@ -205,7 +356,7 @@ export const VIDEO_MODELS: VideoModelSpec[] = [
     id: "fal:kling-2.1-master",
     provider: "fal",
     model: "fal-ai/kling-video/v2.1/master/image-to-video",
-    label: "Kling 2.1 Master · fal.ai (premium)",
+    label: "Kling 2.1 Master · fal.ai (deprecated by fal)",
     clipDurations: [5, 10],
     supportsNegativePrompt: true,
     supportsSeed: false,
@@ -272,12 +423,19 @@ export interface SttModelSpec {
   label: string;
   verboseJson: boolean;
   costPerMinuteUsd: number;
+  /** false: the model does not take the `language` field (it detects the language itself). */
+  languageHint?: boolean;
 }
 
+// All OpenAI-compatible: Groq models need STT_BASE_URL=https://api.groq.com/openai/v1 and a Groq key in STT_API_KEY.
+// OpenAI retires whisper-1 and the gpt-4o transcribe models on 2027-02-26 (replacement: gpt-transcribe).
 export const STT_MODELS: SttModelSpec[] = [
-  { id: "openai:whisper-1", provider: "openai", model: "whisper-1", label: "Whisper (whisper-1)", verboseJson: true, costPerMinuteUsd: 0.006 },
-  { id: "openai:gpt-4o-transcribe", provider: "openai", model: "gpt-4o-transcribe", label: "gpt-4o-transcribe", verboseJson: false, costPerMinuteUsd: 0.006 },
-  { id: "openai:gpt-4o-mini-transcribe", provider: "openai", model: "gpt-4o-mini-transcribe", label: "gpt-4o-mini-transcribe", verboseJson: false, costPerMinuteUsd: 0.003 },
+  { id: "openai:gpt-transcribe", provider: "openai", model: "gpt-transcribe", label: "gpt-transcribe (OpenAI, recommended)", verboseJson: false, costPerMinuteUsd: 0.0045, languageHint: false },
+  { id: "groq:whisper-large-v3", provider: "openai", model: "whisper-large-v3", label: "Groq whisper-large-v3 (cheapest, STT_BASE_URL)", verboseJson: true, costPerMinuteUsd: 0.00185 },
+  { id: "groq:whisper-large-v3-turbo", provider: "openai", model: "whisper-large-v3-turbo", label: "Groq whisper-large-v3-turbo (STT_BASE_URL)", verboseJson: true, costPerMinuteUsd: 0.00067 },
+  { id: "openai:whisper-1", provider: "openai", model: "whisper-1", label: "Whisper (whisper-1, retired 2027-02-26)", verboseJson: true, costPerMinuteUsd: 0.006 },
+  { id: "openai:gpt-4o-transcribe", provider: "openai", model: "gpt-4o-transcribe", label: "gpt-4o-transcribe (retired 2027-02-26)", verboseJson: false, costPerMinuteUsd: 0.006 },
+  { id: "openai:gpt-4o-mini-transcribe", provider: "openai", model: "gpt-4o-mini-transcribe", label: "gpt-4o-mini-transcribe (retired 2027-02-26)", verboseJson: false, costPerMinuteUsd: 0.003 },
   { id: "demo:stt", provider: "demo", model: "demo", label: "DEMO — no recognition", verboseJson: false, costPerMinuteUsd: 0 },
 ];
 

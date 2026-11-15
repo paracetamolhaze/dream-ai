@@ -1,11 +1,13 @@
 import { eq } from "drizzle-orm";
 import { composeImagePrompt, composeNegativePrompt, composeReferencePortraitPrompt, type StylePreset } from "../ai/compose";
 import { fetchBytes } from "../ai/http";
+import { getImageProvider } from "../ai/registry";
 import type { AiCallContext, ImageProvider, ImageRequest } from "../ai/types";
 import { getDb } from "../db/client";
 import { dreamScenes, dreams, visualStyles } from "../db/schema";
 import type { CharacterBibleEntry, DreamBible } from "../db/types";
 import { ProviderError } from "../errors";
+import { logger } from "../logger";
 import { recordUsage } from "../services/ai-usage";
 import { findCachedMedia, imageInputFor, imageInputHash, referenceInputHash, storeImage, type MediaRow } from "./assets";
 import { produceOnce, sleepWithSignal, throwIfAborted } from "./common";
@@ -35,17 +37,45 @@ export async function loadStylePreset(styleId: string, bible?: DreamBible | null
   return { styleId: "cinematic", preset: FALLBACK_STYLE };
 }
 
+const log = logger.child({ step: "frames" });
+
 /**
  * Calls an image provider, logs the cost (success and failure) and returns the
- * image bytes. Retryable failures are retried in place a limited number of
- * times so one flaky frame does not restart the whole job.
+ * image bytes together with the provider that actually produced them. Retryable
+ * failures are retried in place a limited number of times so one flaky frame
+ * does not restart the whole job; when the model still fails or refuses the
+ * prompt, its catalog fallback (`spec.fallbackId`) draws the frame instead.
  */
 export async function callImageProvider(
   provider: ImageProvider,
   req: ImageRequest,
   ctx: AiCallContext,
   retries = 1,
-): Promise<{ bytes: Buffer; seed?: number; costUsd: number }> {
+): Promise<{ bytes: Buffer; seed?: number; costUsd: number; provider: ImageProvider }> {
+  try {
+    return { ...(await callOnce(provider, req, ctx, retries)), provider };
+  } catch (err) {
+    const fallback = ctx.signal?.aborted ? null : fallbackFor(provider, req);
+    if (!fallback) throw err;
+    log.warn("image model failed, drawing the frame with its fallback", { model: provider.spec.id, fallback: fallback.spec.id, error: (err as Error).message });
+    return { ...(await callOnce(fallback, req, ctx, retries)), provider: fallback };
+  }
+}
+
+function fallbackFor(provider: ImageProvider, req: ImageRequest): ImageProvider | null {
+  const id = provider.spec.fallbackId;
+  if (!id || provider.isDemo) return null;
+  try {
+    const fb = getImageProvider(id);
+    // Never swap a real model for demo frames, and an edit model needs the reference.
+    if (fb.isDemo || (fb.spec.requiresReferenceImage && !req.referenceImage)) return null;
+    return fb;
+  } catch {
+    return null;
+  }
+}
+
+async function callOnce(provider: ImageProvider, req: ImageRequest, ctx: AiCallContext, retries: number): Promise<{ bytes: Buffer; seed?: number; costUsd: number }> {
   for (let attempt = 0; ; attempt++) {
     throwIfAborted(ctx.signal);
     const t0 = Date.now();
@@ -161,13 +191,13 @@ export async function ensureFrame(r: FrameRequest): Promise<MediaRow> {
           type: "image",
           bytes: out.bytes,
           dir: r.dir,
-          provider: r.provider.spec.provider,
-          model: r.provider.spec.model,
+          provider: out.provider.spec.provider,
+          model: out.provider.spec.model,
           seed: out.seed ?? plan.seed ?? null,
           prompt: plan.prompt,
           inputHash: plan.hash,
           styleId: r.styleId,
-          isDemo: r.provider.isDemo,
+          isDemo: out.provider.isDemo,
           costUsd: out.costUsd,
         });
       },
@@ -225,14 +255,14 @@ export async function ensureReferencePortrait(r: {
         type: "reference",
         bytes: out.bytes,
         dir: r.dir,
-        provider: r.provider.spec.provider,
-        model: r.provider.spec.model,
+        provider: out.provider.spec.provider,
+        model: out.provider.spec.model,
         seed: out.seed ?? seed ?? null,
         prompt,
         inputHash: hash,
         styleId: r.styleId,
         characterKey: r.character.key,
-        isDemo: r.provider.isDemo,
+        isDemo: out.provider.isDemo,
         costUsd: out.costUsd,
       });
     },
