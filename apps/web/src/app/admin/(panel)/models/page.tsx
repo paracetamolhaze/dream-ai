@@ -63,6 +63,7 @@ export default async function ModelsPage() {
               </Field>
               <Field label="LLM-провайдер (анализ сна)" hint={demo.llm ? "будет использован демо-провайдер" : undefined}>
                 <select name="llmProvider" className="adm-select" defaultValue={m.llm.provider}>
+                  <option value="openrouter">OpenRouter (один ключ на всё)</option>
                   <option value="anthropic">Anthropic (Claude)</option>
                   <option value="openai">OpenAI-совместимый</option>
                   <option value="demo">Демо (эвристика, без AI)</option>

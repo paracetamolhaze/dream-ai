@@ -30,9 +30,98 @@ function fullHd(req: { width: number; height: number }): { width: number; height
   return { width: Math.round((req.width * k) / 8) * 8, height: Math.round((req.height * k) / 8) * 8 };
 }
 
-// Prices: fal.ai model pages, checked 2026-11-15. fal bills per-megapixel models in
-// 1024×1024 units rounded up, so an 864×1536 frame (1.27 MP) is billed as 2 MP.
+/** OpenRouter Image API body: one shape for every model; reference images go in `input_references`. */
+function orImage(model: string, req: ImageRequest, extra: Record<string, unknown>): Record<string, unknown> {
+  const ref = imageRef(req);
+  return {
+    model,
+    prompt: req.prompt,
+    aspect_ratio: aspect(req),
+    n: 1,
+    ...extra,
+    ...(ref ? { input_references: [{ type: "image_url", image_url: { url: ref } }] } : {}),
+  };
+}
+
+// Prices checked 2026-11-15 on openrouter.ai (Image API endpoints) and fal.ai model pages.
+// fal bills per-megapixel models in 1024×1024 units rounded up (an 864×1536 frame = 2 MP).
 export const IMAGE_MODELS: ImageModelSpec[] = [
+  {
+    id: "or:seedream-5.5",
+    provider: "openrouter",
+    model: "bytedance-seed/seedream-5-5",
+    label: "Seedream 5.5 · OpenRouter ($0.02, recommended)",
+    supportsSeed: true,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: false,
+    costPerImageUsd: 0.02,
+    fallbackId: "or:flux3-klein",
+    // 1K/1.5K bill $0.02; 2K is the $0.035 "high resolution" tier.
+    buildInput: (req) => orImage("bytedance-seed/seedream-5-5", req, { resolution: "1.5K", output_format: "jpeg", seed: req.seed }),
+  },
+  {
+    id: "or:seedream-5.5-edit",
+    provider: "openrouter",
+    model: "bytedance-seed/seedream-5-5",
+    label: "Seedream 5.5 Edit (reference image) · OpenRouter ($0.028, recommended)",
+    supportsSeed: true,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    requiresReferenceImage: true,
+    // $0.02 per output + $0.008 per input image.
+    costPerImageUsd: 0.028,
+    fallbackId: "or:flux3-klein-edit",
+    buildInput: (req) => orImage("bytedance-seed/seedream-5-5", req, { resolution: "1.5K", output_format: "jpeg", seed: req.seed }),
+  },
+  {
+    id: "or:flux3-klein",
+    provider: "openrouter",
+    model: "black-forest-labs/flux-3-image-klein",
+    label: "FLUX.3 [klein] · OpenRouter ($0.011, budget)",
+    supportsSeed: true,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: false,
+    costPerImageUsd: 0.011,
+    buildInput: (req) => orImage("black-forest-labs/flux-3-image-klein", req, { resolution: "1.5K", output_format: "jpeg", seed: req.seed }),
+  },
+  {
+    id: "or:flux3-klein-edit",
+    provider: "openrouter",
+    model: "black-forest-labs/flux-3-image-klein",
+    label: "FLUX.3 [klein] Edit (reference image) · OpenRouter ($0.011, budget)",
+    supportsSeed: true,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    requiresReferenceImage: true,
+    costPerImageUsd: 0.011,
+    buildInput: (req) => orImage("black-forest-labs/flux-3-image-klein", req, { resolution: "1.5K", output_format: "jpeg", seed: req.seed }),
+  },
+  {
+    id: "or:nano-banana-2.1",
+    provider: "openrouter",
+    model: "google/gemini-nano-banana-2.1",
+    label: "Nano Banana 2.1 · OpenRouter (~$0.04, premium)",
+    supportsSeed: false,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: false,
+    // Billed per output token ($30/M), about 1,300 tokens for a 1K image.
+    costPerImageUsd: 0.039,
+    fallbackId: "or:flux3-klein",
+    buildInput: (req) => orImage("google/gemini-nano-banana-2.1", req, { resolution: "1K" }),
+  },
+  {
+    id: "or:nano-banana-2.1-edit",
+    provider: "openrouter",
+    model: "google/gemini-nano-banana-2.1",
+    label: "Nano Banana 2.1 Edit (reference image) · OpenRouter (~$0.04, premium)",
+    supportsSeed: false,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    requiresReferenceImage: true,
+    costPerImageUsd: 0.04,
+    fallbackId: "or:flux3-klein-edit",
+    buildInput: (req) => orImage("google/gemini-nano-banana-2.1", req, { resolution: "1K" }),
+  },
   {
     id: "fal:muse-image",
     provider: "fal",
@@ -285,9 +374,83 @@ function durationFrom(spec: { clipDurations: number[] }, req: VideoRequest): num
   return spec.clipDurations.reduce((best, d) => (Math.abs(d - req.durationSec) < Math.abs(best - req.durationSec) ? d : best), spec.clipDurations[0]!);
 }
 
-// Prices: fal.ai model pages, checked 2026-11-15. Resolution is always sent explicitly —
-// several models default to 1080p/2K, which costs 2–3× more.
+/** OpenRouter Video API body: the scene frame is the exact first frame; output is vertical like the frames. */
+function orVideo(spec: { model: string; clipDurations: number[] }, req: VideoRequest, image: string, extra: Record<string, unknown>): Record<string, unknown> {
+  return {
+    model: spec.model,
+    prompt: req.prompt,
+    duration: durationFrom(spec, req),
+    aspect_ratio: "9:16",
+    frame_images: [{ type: "image_url", image_url: { url: image }, frame_type: "first_frame" }],
+    ...extra,
+  };
+}
+
+// Prices checked 2026-11-15 (openrouter.ai /videos/models, fal.ai model pages). Resolution is
+// always sent explicitly — several models default to 1080p/2K, which costs 2–3× more.
+// OpenRouter jobs cannot be cancelled once submitted (supportsCancel: false).
 export const VIDEO_MODELS: VideoModelSpec[] = [
+  {
+    id: "or:heygen-video",
+    provider: "openrouter",
+    model: "heygen/heygen-video-1",
+    label: "HeyGen Video 768p · OpenRouter ($0.036/s, recommended)",
+    clipDurations: [5, 10],
+    supportsNegativePrompt: false,
+    supportsSeed: true,
+    imageToVideo: true,
+    supportsCancel: false,
+    costPerSecondUsd: 0.036,
+    buildInput(req, image) {
+      return orVideo(this, req, image, { resolution: "768p", seed: req.seed });
+    },
+  },
+  {
+    id: "or:veo-3.1-lite",
+    provider: "openrouter",
+    model: "google/veo-3.1-lite",
+    label: "Veo 3.1 Lite 720p · OpenRouter ($0.03/s, budget)",
+    clipDurations: [4, 6, 8],
+    supportsNegativePrompt: false,
+    supportsSeed: true,
+    imageToVideo: true,
+    supportsCancel: false,
+    costPerSecondUsd: 0.03,
+    buildInput(req, image) {
+      // Clip audio is dropped at assembly; skipping it is also the cheaper price.
+      return orVideo(this, req, image, { resolution: "720p", generate_audio: false, seed: req.seed });
+    },
+  },
+  {
+    id: "or:hailuo-3-max",
+    provider: "openrouter",
+    model: "minimax/hailuo-3-max",
+    label: "MiniMax Hailuo 3 Max 768p · OpenRouter ($0.08/s, premium)",
+    clipDurations: [5, 10],
+    supportsNegativePrompt: false,
+    supportsSeed: false,
+    imageToVideo: true,
+    supportsCancel: false,
+    costPerSecondUsd: 0.08,
+    buildInput(req, image) {
+      return orVideo(this, req, image, { resolution: "768p" });
+    },
+  },
+  {
+    id: "or:kling-3-std",
+    provider: "openrouter",
+    model: "kwaivgi/kling-v3.0-std",
+    label: "Kling 3.0 Standard 720p · OpenRouter ($0.084/s)",
+    clipDurations: [5, 10],
+    supportsNegativePrompt: false,
+    supportsSeed: false,
+    imageToVideo: true,
+    supportsCancel: false,
+    costPerSecondUsd: 0.084,
+    buildInput(req, image) {
+      return orVideo(this, req, image, { resolution: "720p", generate_audio: false });
+    },
+  },
   {
     id: "fal:heygen-video",
     provider: "fal",
@@ -418,7 +581,7 @@ export const VIDEO_MODELS: VideoModelSpec[] = [
 
 export interface SttModelSpec {
   id: string;
-  provider: "openai" | "demo";
+  provider: "openrouter" | "openai" | "demo";
   model: string;
   label: string;
   verboseJson: boolean;
@@ -429,7 +592,11 @@ export interface SttModelSpec {
 
 // All OpenAI-compatible: Groq models need STT_BASE_URL=https://api.groq.com/openai/v1 and a Groq key in STT_API_KEY.
 // OpenAI retires whisper-1 and the gpt-4o transcribe models on 2027-02-26 (replacement: gpt-transcribe).
+// OpenRouter models use its OpenAI-compatible /audio/transcriptions endpoint (OPENROUTER_API_KEY).
 export const STT_MODELS: SttModelSpec[] = [
+  { id: "or:gpt-transcribe", provider: "openrouter", model: "openai/gpt-transcribe", label: "gpt-transcribe · OpenRouter (recommended)", verboseJson: true, costPerMinuteUsd: 0.0045 },
+  { id: "or:scribe-v2", provider: "openrouter", model: "elevenlabs/scribe-v2", label: "ElevenLabs Scribe v2 · OpenRouter", verboseJson: true, costPerMinuteUsd: 0.0037 },
+  { id: "or:whisper-large-v3", provider: "openrouter", model: "openai/whisper-large-v3", label: "Whisper large-v3 · OpenRouter (cheapest)", verboseJson: true, costPerMinuteUsd: 0.00045 },
   { id: "openai:gpt-transcribe", provider: "openai", model: "gpt-transcribe", label: "gpt-transcribe (OpenAI, recommended)", verboseJson: false, costPerMinuteUsd: 0.0045, languageHint: false },
   { id: "groq:whisper-large-v3", provider: "openai", model: "whisper-large-v3", label: "Groq whisper-large-v3 (cheapest, STT_BASE_URL)", verboseJson: true, costPerMinuteUsd: 0.00185 },
   { id: "groq:whisper-large-v3-turbo", provider: "openai", model: "whisper-large-v3-turbo", label: "Groq whisper-large-v3-turbo (STT_BASE_URL)", verboseJson: true, costPerMinuteUsd: 0.00067 },
@@ -440,7 +607,7 @@ export const STT_MODELS: SttModelSpec[] = [
 ];
 
 export interface LlmModelSpec {
-  provider: "anthropic" | "openai" | "demo";
+  provider: "openrouter" | "anthropic" | "openai" | "demo";
   model: string;
   label: string;
   inputPerMTokUsd: number;
@@ -448,6 +615,9 @@ export interface LlmModelSpec {
 }
 
 export const LLM_MODELS: LlmModelSpec[] = [
+  { provider: "openrouter", model: "anthropic/claude-haiku-5.5", label: "Claude Haiku 5.5 · OpenRouter (recommended)", inputPerMTokUsd: 0.1, outputPerMTokUsd: 0.5 },
+  { provider: "openrouter", model: "anthropic/claude-sonnet-5.5", label: "Claude Sonnet 5.5 · OpenRouter", inputPerMTokUsd: 2, outputPerMTokUsd: 10 },
+  { provider: "openrouter", model: "anthropic/claude-opus-5.5", label: "Claude Opus 5.5 · OpenRouter", inputPerMTokUsd: 4, outputPerMTokUsd: 20 },
   { provider: "anthropic", model: "claude-opus-5-5", label: "Claude Opus 5.5", inputPerMTokUsd: 4, outputPerMTokUsd: 20 },
   { provider: "anthropic", model: "claude-sonnet-5-5", label: "Claude Sonnet 5.5", inputPerMTokUsd: 2, outputPerMTokUsd: 10 },
   { provider: "anthropic", model: "claude-haiku-5-5", label: "Claude Haiku 5.5", inputPerMTokUsd: 0.1, outputPerMTokUsd: 0.5 },

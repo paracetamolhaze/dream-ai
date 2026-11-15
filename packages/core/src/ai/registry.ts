@@ -5,6 +5,7 @@ import { IMAGE_MODELS, VIDEO_MODELS, findImageModel, findSttModel, findVideoMode
 import { AnthropicLlmProvider } from "./providers/anthropic";
 import { DemoImageProvider, DemoLlmProvider, DemoSttProvider, DemoVideoProvider } from "./providers/demo";
 import { FalImageProvider, FalVideoProvider } from "./providers/fal";
+import { OpenRouterImageProvider, OpenRouterVideoProvider, type OpenRouterConn } from "./providers/openrouter";
 import { OpenAiImageProvider, OpenAiLlmProvider, OpenAiSttProvider } from "./providers/openai-compatible";
 import { ReplicateImageProvider, ReplicateVideoProvider } from "./providers/replicate";
 import { RunwayVideoProvider } from "./providers/runway";
@@ -23,6 +24,7 @@ function notConfigured(kind: string, what: string): never {
 export function credentials() {
   const e = env();
   return {
+    openrouter: e.OPENROUTER_API_KEY ? ({ baseUrl: e.OPENROUTER_BASE_URL, apiKey: e.OPENROUTER_API_KEY } satisfies OpenRouterConn) : null,
     openai: e.OPENAI_API_KEY,
     stt: e.STT_API_KEY ?? e.OPENAI_API_KEY,
     sttBase: e.STT_BASE_URL ?? e.OPENAI_BASE_URL,
@@ -41,6 +43,11 @@ export function getSttProvider(settings: Settings): SttProvider {
   const sel = settings.models.stt;
   const c = credentials();
   if (sel.provider === "demo") return new DemoSttProvider();
+  if (sel.provider === "openrouter") {
+    const spec = findSttModel("openrouter", sel.model) ?? { model: sel.model, verboseJson: true, costPerMinuteUsd: 0.0045 };
+    if (c.openrouter) return new OpenAiSttProvider(c.openrouter, spec, "openrouter");
+    return env().DEMO_MODE ? new DemoSttProvider() : notConfigured("stt", "OpenRouter");
+  }
   // A custom STT base URL (e.g. local faster-whisper-server) may not need a key.
   const hasLocal = Boolean(env().STT_BASE_URL);
   if (!c.stt && !hasLocal) return env().DEMO_MODE ? new DemoSttProvider() : notConfigured("stt", "Speech-to-text");
@@ -54,6 +61,10 @@ export function getLlmProvider(settings: Settings): LlmProvider {
   const g = settings.generation;
   const demo = () => new DemoLlmProvider({ minScenes: g.slideshowMinScenes, maxScenes: g.slideshowMaxScenes });
   if (sel.provider === "demo") return demo();
+  if (sel.provider === "openrouter") {
+    if (c.openrouter) return new OpenAiLlmProvider(c.openrouter, sel.model, "openrouter");
+    return env().DEMO_MODE ? demo() : notConfigured("llm", "OpenRouter");
+  }
   if (sel.provider === "anthropic") {
     if (c.anthropic) return new AnthropicLlmProvider(c.anthropic, sel.model);
     return env().DEMO_MODE ? demo() : notConfigured("llm", "Anthropic");
@@ -74,6 +85,8 @@ export function getImageProvider(modelId: string): ImageProvider {
   switch (spec.provider) {
     case "demo":
       return new DemoImageProvider();
+    case "openrouter":
+      return c.openrouter ? new OpenRouterImageProvider(c.openrouter, spec) : fallback();
     case "fal":
       return c.fal ? new FalImageProvider(c.fal, spec) : fallback();
     case "replicate":
@@ -91,6 +104,8 @@ export function getVideoProvider(modelId: string): VideoProvider {
   switch (spec.provider) {
     case "demo":
       return new DemoVideoProvider();
+    case "openrouter":
+      return c.openrouter ? new OpenRouterVideoProvider(c.openrouter, spec) : fallback();
     case "fal":
       return c.fal ? new FalVideoProvider(c.fal, spec) : fallback();
     case "replicate":

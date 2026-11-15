@@ -11,7 +11,7 @@ vi.mock("../src/ai/registry", () => ({
 }));
 vi.mock("../src/services/ai-usage", () => ({ recordUsage: async () => undefined }));
 
-import { IMAGE_MODELS, STT_MODELS, findImageModel, findVideoModel } from "../src/ai/models";
+import { IMAGE_MODELS, LLM_MODELS, STT_MODELS, findImageModel, findVideoModel } from "../src/ai/models";
 import type { ImageModelSpec, ImageRequest } from "../src/ai/types";
 import { ProviderError } from "../src/errors";
 import { callImageProvider } from "../src/pipeline/frames";
@@ -26,6 +26,13 @@ describe("model catalogue", () => {
     expect(findImageModel(m.image.referenceModel!)?.supportsReferenceImage).toBe(true);
     expect(findVideoModel(m.video.model)).toBeDefined();
     expect(STT_MODELS.some((s) => s.provider === m.stt.provider && s.model === m.stt.model)).toBe(true);
+    expect(LLM_MODELS.some((l) => l.provider === m.llm.provider && l.model === m.llm.model)).toBe(true);
+  });
+
+  it("routes every default step through OpenRouter (one key)", () => {
+    const m = defaultSettings().models;
+    expect([m.stt.provider, m.llm.provider, findImageModel(m.image.model)!.provider, findImageModel(m.image.referenceModel!)!.provider, findVideoModel(m.video.model)!.provider]).toEqual(Array(5).fill("openrouter"));
+    expect(m.llm.model).toBe("anthropic/claude-haiku-5.5");
   });
 
   it("fallbacks are real models with the same reference contract and no chains", () => {

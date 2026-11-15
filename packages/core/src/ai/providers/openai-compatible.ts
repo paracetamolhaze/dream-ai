@@ -38,10 +38,11 @@ const url = (conn: Conn, p: string) => `${conn.baseUrl.replace(/\/$/, "")}${p}`;
 
 export class OpenAiSttProvider implements SttProvider {
   readonly isDemo = false;
-  readonly id = "openai";
   constructor(
     private readonly conn: Conn,
     private readonly spec: SttModelSpec | { model: string; verboseJson: boolean; costPerMinuteUsd: number },
+    /** "openrouter" when the OpenAI-compatible endpoint is OpenRouter's (it also reports the real cost). */
+    readonly id: "openai" | "openrouter" = "openai",
   ) {}
   get model() {
     return this.spec.model;
@@ -55,19 +56,19 @@ export class OpenAiSttProvider implements SttProvider {
     form.set("response_format", this.spec.verboseJson ? "verbose_json" : "json");
     // gpt-transcribe takes `languages` instead of `language`; it detects the language itself, so no hint is sent.
     if (input.language && ("languageHint" in this.spec ? this.spec.languageHint !== false : true)) form.set("language", input.language);
-    const res = await fetchJson<{ text?: string; language?: string; languages?: unknown[]; duration?: number }>("openai-stt", url(this.conn, "/audio/transcriptions"), {
+    const res = await fetchJson<{ text?: string; language?: string; languages?: unknown[]; duration?: number; usage?: { seconds?: number; cost?: number } }>(`${this.id}-stt`, url(this.conn, "/audio/transcriptions"), {
       form,
       headers: headers(this.conn),
       timeoutMs: 10 * 60_000,
       signal: ctx.signal,
     });
     const text = (res?.text ?? "").trim();
-    const durationSec = res?.duration ?? input.durationSec;
+    const durationSec = res?.duration ?? res?.usage?.seconds ?? input.durationSec;
     return {
       text,
       language: normalizeLanguage(res?.language ?? (typeof res?.languages?.[0] === "string" ? res.languages[0] : undefined)) ?? input.language,
       durationSec,
-      costUsd: ((durationSec ?? 60) / 60) * this.spec.costPerMinuteUsd,
+      costUsd: typeof res?.usage?.cost === "number" ? res.usage.cost : ((durationSec ?? 60) / 60) * this.spec.costPerMinuteUsd,
     };
   }
 }
@@ -99,10 +100,11 @@ function strictify(schema: unknown): unknown {
 
 export class OpenAiLlmProvider implements LlmProvider {
   readonly isDemo = false;
-  readonly id = "openai";
   constructor(
     private readonly conn: Conn,
     readonly model: string,
+    /** "openrouter": `max_tokens` + usage accounting (OpenRouter reports the real cost of each call). */
+    readonly id: "openai" | "openrouter" = "openai",
   ) {}
 
   async generateStructured<T>(req: StructuredRequest<T>, ctx: AiCallContext): Promise<StructuredResult<T>> {
@@ -113,32 +115,34 @@ export class OpenAiLlmProvider implements LlmProvider {
     ];
     let totalIn = 0;
     let totalOut = 0;
+    let reportedCost = 0;
     let lastError = "";
     for (let attempt = 0; attempt < 2; attempt++) {
       const body = {
         model: this.model,
         messages: attempt === 0 ? messages : [...messages, { role: "user", content: `Your previous output did not match the schema: ${lastError}. Return only valid JSON.` }],
-        max_completion_tokens: req.maxTokens ?? 8000,
+        ...(this.id === "openrouter" ? { max_tokens: req.maxTokens ?? 8000, usage: { include: true } } : { max_completion_tokens: req.maxTokens ?? 8000 }),
         response_format: { type: "json_schema", json_schema: { name: req.schemaName, schema: jsonSchema, strict: true } },
       };
       const res = await fetchJson<{
         choices?: { message?: { content?: string | null; refusal?: string | null }; finish_reason?: string }[];
-        usage?: { prompt_tokens?: number; completion_tokens?: number };
-      }>("openai-llm", url(this.conn, "/chat/completions"), { body, headers: headers(this.conn), timeoutMs: 180_000, signal: ctx.signal });
+        usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
+      }>(`${this.id}-llm`, url(this.conn, "/chat/completions"), { body, headers: headers(this.conn), timeoutMs: 180_000, signal: ctx.signal });
       totalIn += res.usage?.prompt_tokens ?? 0;
       totalOut += res.usage?.completion_tokens ?? 0;
+      if (typeof res.usage?.cost === "number") reportedCost += res.usage.cost;
       const choice = res.choices?.[0];
-      if (choice?.message?.refusal) throw new ProviderError("openai-llm", `refusal: ${choice.message.refusal}`, { retryable: false, code: "provider_rejected_content" });
+      if (choice?.message?.refusal) throw new ProviderError(`${this.id}-llm`, `refusal: ${choice.message.refusal}`, { retryable: false, code: "provider_rejected_content" });
       const content = choice?.message?.content ?? "";
       try {
         const parsed = req.schema.safeParse(JSON.parse(content));
         if (parsed.success) {
-          const price = llmPricing("openai", this.model);
+          const price = llmPricing(this.id, this.model);
           return {
             data: parsed.data,
             inputTokens: totalIn,
             outputTokens: totalOut,
-            costUsd: price ? (totalIn * price.inputPerMTokUsd + totalOut * price.outputPerMTokUsd) / 1e6 : 0,
+            costUsd: reportedCost > 0 ? reportedCost : price ? (totalIn * price.inputPerMTokUsd + totalOut * price.outputPerMTokUsd) / 1e6 : 0,
           };
         }
         lastError = parsed.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
@@ -146,7 +150,7 @@ export class OpenAiLlmProvider implements LlmProvider {
         lastError = `invalid JSON (${(e as Error).message})`;
       }
     }
-    throw new ProviderError("openai-llm", `structured output invalid: ${lastError}`, { retryable: true, code: "analysis_failed" });
+    throw new ProviderError(`${this.id}-llm`, `structured output invalid: ${lastError}`, { retryable: true, code: "analysis_failed" });
   }
 }
 

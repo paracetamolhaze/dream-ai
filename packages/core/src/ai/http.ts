@@ -51,7 +51,7 @@ export async function fetchJson<T = unknown>(provider: string, url: string, opts
 }
 
 /** Downloads a binary resource (provider output) into memory. */
-export async function fetchBytes(provider: string, url: string, timeoutMs = 300_000): Promise<{ bytes: Buffer; contentType?: string }> {
+export async function fetchBytes(provider: string, url: string, timeoutMs = 300_000, headers?: Record<string, string>): Promise<{ bytes: Buffer; contentType?: string }> {
   if (url.startsWith("data:")) {
     const m = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(url);
     if (!m) throw new ProviderError(provider, "invalid data URI", { retryable: false });
@@ -60,7 +60,7 @@ export async function fetchBytes(provider: string, url: string, timeoutMs = 300_
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal, headers });
     if (!res.ok) throw ProviderError.fromHttp(provider, res.status, await res.text().catch(() => ""));
     return { bytes: Buffer.from(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? undefined };
   } catch (err) {

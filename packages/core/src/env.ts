@@ -73,6 +73,9 @@ const EnvSchema = z.object({
   /** Global demo mode: providers without keys fall back to clearly labelled demo providers. */
   DEMO_MODE: bool.default(false),
 
+  /** One key for every step (speech, analysis, images, video) through openrouter.ai. */
+  OPENROUTER_API_KEY: optionalString,
+  OPENROUTER_BASE_URL: z.string().default("https://openrouter.ai/api/v1"),
   OPENAI_API_KEY: optionalString,
   OPENAI_BASE_URL: z.string().default("https://api.openai.com/v1"),
   STT_API_KEY: optionalString,

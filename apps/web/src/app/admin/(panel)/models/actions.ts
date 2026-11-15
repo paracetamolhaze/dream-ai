@@ -13,7 +13,7 @@ export const saveModelsAction = adminAction({
     stt: z.string().min(3),
     sttCustomModel: z.string().trim().max(80).optional(),
     sttLanguage: z.enum(["auto", "ru", "en"]),
-    llmProvider: z.enum(["anthropic", "openai", "demo"]),
+    llmProvider: z.enum(["openrouter", "anthropic", "openai", "demo"]),
     llmModel: z.string().trim().min(1).max(120),
     imageModel: z.string().min(3),
     referenceModel: z.string().optional(),

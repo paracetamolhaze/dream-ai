@@ -473,7 +473,7 @@ export async function ensureClip(a: ClipArgs): Promise<MediaRow> {
       const local = path.join(a.dir, `${clip.id}.src.mp4`);
       let stored: Awaited<ReturnType<typeof uploadVideoFile>>;
       try {
-        await downloadUrlToFile(st.videoUrl, local, a.provider.spec.provider);
+        await downloadUrlToFile(st.videoUrl, local, a.provider.spec.provider, st.videoHeaders);
         stored = await uploadVideoFile({ userId: a.userId, dreamId: a.dreamId, mediaId: clip.id, file: local, dir: a.dir });
       } catch (err) {
         // First failure: keep the task so a retry can re-download it. A resumed task that

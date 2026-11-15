@@ -45,12 +45,13 @@ export const SettingsSchemas = {
     mode: z.enum(["always", "free_only", "never"]).default("free_only"),
     text: z.string().min(1).max(60).default("Made with DREAM AI"),
   }),
-  // Best quality per dollar as of 2026-11 (see ai/models.ts for prices and alternatives).
+  // Everything through OpenRouter (one key); best quality per dollar as of 2026-11 —
+  // see ai/models.ts for prices and alternatives.
   models: ModelSelectionSchema.default({
-    stt: { provider: "openai", model: "gpt-transcribe", language: "auto" },
-    llm: { provider: "anthropic", model: "claude-opus-5-5" },
-    image: { model: "fal:muse-image", referenceModel: "fal:muse-image-edit" },
-    video: { model: "fal:heygen-video" },
+    stt: { provider: "openrouter", model: "openai/gpt-transcribe", language: "auto" },
+    llm: { provider: "openrouter", model: "anthropic/claude-haiku-5.5" },
+    image: { model: "or:seedream-5.5", referenceModel: "or:seedream-5.5-edit" },
+    video: { model: "or:heygen-video" },
   }),
   concurrency: z.object({
     transcription: z.number().int().min(1).max(20).default(3),

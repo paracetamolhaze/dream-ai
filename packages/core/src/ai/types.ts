@@ -89,7 +89,7 @@ export interface ImageResult {
 export interface ImageModelSpec {
   /** Catalog id, e.g. "fal:flux-dev". */
   id: string;
-  provider: "fal" | "replicate" | "openai" | "demo";
+  provider: "openrouter" | "fal" | "replicate" | "openai" | "demo";
   /** Provider-side model identifier. */
   model: string;
   label: string;
@@ -130,6 +130,8 @@ export type VideoTaskState = "queued" | "running" | "succeeded" | "failed" | "ca
 export interface VideoTaskStatus {
   state: VideoTaskState;
   videoUrl?: string;
+  /** Headers needed to download `videoUrl` (e.g. the provider's own auth for its content endpoint). */
+  videoHeaders?: Record<string, string>;
   error?: string;
   retryable?: boolean;
   rejectedContent?: boolean;
@@ -137,7 +139,7 @@ export interface VideoTaskStatus {
 
 export interface VideoModelSpec {
   id: string;
-  provider: "fal" | "replicate" | "runway" | "demo";
+  provider: "openrouter" | "fal" | "replicate" | "runway" | "demo";
   model: string;
   label: string;
   /** Clip durations (seconds) the API actually accepts. */

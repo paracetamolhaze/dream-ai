@@ -159,25 +159,30 @@ loopback: из той же сети домен не открывается, хо
 
 ## AI-провайдеры
 
+По умолчанию всё идёт через **OpenRouter** — один ключ `OPENROUTER_API_KEY` на распознавание речи,
+анализ, изображения и видео. Остальные адаптеры остаются в каталоге как альтернативы.
+
 | Задача | Провайдер (адаптер) | Переменная | По умолчанию |
 |---|---|---|---|
-| Распознавание речи | OpenAI (`gpt-transcribe`, Whisper); Groq `whisper-large-v3` и любой OpenAI-совместимый, вкл. локальный faster-whisper-server | `OPENAI_API_KEY` или `STT_API_KEY` + `STT_BASE_URL` | `gpt-transcribe`, автоопределение языка |
-| Анализ сна | Anthropic Claude (официальный SDK, структурированный вывод, server-side fallback при отказе у моделей, где он есть); OpenAI-совместимый (json_schema) | `ANTHROPIC_API_KEY` / `LLM_OPENAI_*` | `claude-opus-5-5` |
-| Изображения | fal.ai (Meta Muse, FLUX.3 klein, Seedream 5.5, FLUX.1, FLUX Kontext, Qwen-Image), Replicate (FLUX, Kontext), OpenAI-совместимый (`gpt-image-1`, LocalAI) | `FAL_KEY` / `REPLICATE_API_TOKEN` / `IMAGE_OPENAI_*` | `fal:muse-image` + reference `fal:muse-image-edit`, запасная `fal:flux3-klein` |
-| Видео | fal.ai (HeyGen Video, MiniMax H3, Seedance 1.0 Pro Fast, Hailuo-02, Kling 2.1), Runway Gen-4 Turbo; адаптер Replicate готов для моделей, добавленных в каталог | `FAL_KEY` / `RUNWAY_API_KEY` / `REPLICATE_API_TOKEN` | `fal:heygen-video` (768p) |
+| Распознавание речи | OpenRouter `/audio/transcriptions` (gpt-transcribe, Scribe v2, Whisper large-v3); OpenAI, Groq и любой OpenAI-совместимый, вкл. локальный faster-whisper-server | `OPENROUTER_API_KEY` / `OPENAI_API_KEY` или `STT_API_KEY` + `STT_BASE_URL` | `openai/gpt-transcribe`, автоопределение языка |
+| Анализ сна | OpenRouter (структурированный вывод json_schema); Anthropic Claude напрямую (официальный SDK); OpenAI-совместимый | `OPENROUTER_API_KEY` / `ANTHROPIC_API_KEY` / `LLM_OPENAI_*` | `anthropic/claude-haiku-5.5` |
+| Изображения | OpenRouter Image API (Seedream 5.5, FLUX.3 klein, Nano Banana 2.1); fal.ai (Muse, FLUX, Kontext, Qwen), Replicate, OpenAI-совместимый | `OPENROUTER_API_KEY` / `FAL_KEY` / … | `or:seedream-5.5` + reference `or:seedream-5.5-edit`, запасная FLUX.3 klein |
+| Видео | OpenRouter Video API (HeyGen Video, Veo 3.1 Lite, Hailuo 3 Max, Kling 3.0); fal.ai, Runway | `OPENROUTER_API_KEY` / `FAL_KEY` / `RUNWAY_API_KEY` | `or:heygen-video` (768p, 9:16) |
 
-**Себестоимость сна** (цены fal.ai, OpenAI и Anthropic на ноябрь 2026; 8 сцен, голос 2 мин):
+**Себестоимость сна через OpenRouter** (цены на ноябрь 2026 + 5.5% комиссии OpenRouter при пополнении;
+8 сцен, голос 2 мин, бесплатный кадр-превью включён):
 
 | | Слайд-шоу | Видео 10 с | Видео 30 с | Видео 60 с |
 |---|---|---|---|---|
-| По умолчанию (анализ Claude Opus 5.5) | ≈ $0.23 | ≈ $0.37 | ≈ $0.81 | ≈ $1.43 |
-| То же с анализом на Claude Haiku 5.5 | ≈ $0.11 | ≈ $0.25 | ≈ $0.69 | ≈ $1.31 |
-| Премиум (Seedream 5.5 + MiniMax H3) | ≈ $0.50 | ≈ $0.87 | ≈ $2.22 | ≈ $4.10 |
+| По умолчанию (Seedream 5.5 + HeyGen 768p) | ≈ $0.27 | ≈ $0.49 | ≈ $1.36 | ≈ $2.55 |
+| Бюджетно (FLUX.3 klein + Veo 3.1 Lite) | ≈ $0.12 | ≈ $0.37 | ≈ $1.05 | ≈ $2.02 |
+| Премиум (Nano Banana 2.1 + Hailuo 3 Max) | ≈ $0.43 | ≈ $1.02 | ≈ $2.88 | ≈ $5.49 |
 
-Кадр стоит $0.01 (Muse), секунда видео — $0.02 (HeyGen 768p), анализ сна — ≈ $0.12 (Opus 5.5),
-≈ $0.06 (Sonnet 5.5) или ≈ $0.003 (Haiku 5.5). Если основная модель изображений отказала (бывает
-у партнёрских API на мрачных снах) или так и не ответила, этот кадр рисует запасная модель (`fallbackId`
-в каталоге). Модели переключаются в *Админка → Модели*.
+Кадр стоит $0.02 (Seedream 5.5; с референсом персонажа $0.028), секунда видео — $0.036 (HeyGen 768p),
+анализ сна на Claude Haiku 5.5 — ≈ $0.003, распознавание 2 минут голоса — ≈ $0.009. Если модель
+изображений отказала или так и не ответила, этот кадр рисует запасная модель (`fallbackId` в каталоге).
+OpenRouter возвращает фактическую стоимость каждого вызова — она пишется в учёт расходов админки.
+Модели переключаются в *Админка → Модели*.
 
 Возможности каждой модели (seed, negative prompt, reference image, допустимые длительности клипов, цена)
 описаны в каталоге [`packages/core/src/ai/models.ts`](packages/core/src/ai/models.ts). Пользователю

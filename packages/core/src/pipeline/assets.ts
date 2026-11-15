@@ -116,7 +116,7 @@ function localPathFromFileUrl(url: string): string {
  * Downloads a provider output (https, data: or — for the demo provider —
  * file://) to a local file. Demo temp dirs are removed after copying.
  */
-export async function downloadUrlToFile(url: string, dest: string, provider: string): Promise<void> {
+export async function downloadUrlToFile(url: string, dest: string, provider: string, headers?: Record<string, string>): Promise<void> {
   if (url.startsWith("file://")) {
     const src = localPathFromFileUrl(url);
     await copyFile(src, dest);
@@ -124,7 +124,7 @@ export async function downloadUrlToFile(url: string, dest: string, provider: str
     if (path.resolve(src).startsWith(path.resolve(demoRoot))) await rm(path.dirname(src), { recursive: true, force: true }).catch(() => undefined);
     return;
   }
-  const { bytes } = await fetchBytes(provider, url, 10 * 60_000);
+  const { bytes } = await fetchBytes(provider, url, 10 * 60_000, headers);
   if (bytes.length === 0) throw new ProviderError(provider, "downloaded file is empty", { retryable: true });
   await writeFile(dest, bytes);
 }
